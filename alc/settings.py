@@ -33,8 +33,10 @@ INSTALLED_APPS = [
     'users',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'questions',
 
 ]
+FRONTEND_URL = "http://localhost:3000"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -164,9 +166,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your-email@gmail.com'
-EMAIL_HOST_PASSWORD = 'your-app-password'
-DEFAULT_FROM_EMAIL = 'your-email@gmail.com'
+EMAIL_HOST_USER = 'sm249481@gmail.com'
+EMAIL_HOST_PASSWORD = 'lptj jnta uqln rbsw'
+DEFAULT_FROM_EMAIL = 'sm249481@gmail.com'
 
 # Logging
 LOGGING = {

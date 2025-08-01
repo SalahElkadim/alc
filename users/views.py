@@ -11,6 +11,11 @@ from datetime import timedelta
 import logging
 from .models import CustomUser,UserSession
 from .utils import generate_device_fingerprint
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
+from django.utils.encoding import force_bytes,force_str
+
+
 
 
 
@@ -160,26 +165,61 @@ class ForgotPasswordView(APIView):
         serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            user = CustomUser.objects.get(email=email)
-            
-            # إنشاء token مؤقت (يفضل استخدام مكتبة منفصلة)
-            # هنا مثال بسيط - في الواقع استخدم Django tokens أو JWT
-            
-            # إرسال email
+            try:
+                user = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                return Response({"detail": "هذا البريد غير مسجل."}, status=status.HTTP_400_BAD_REQUEST)
+
+            token_generator = PasswordResetTokenGenerator()
+            token = token_generator.make_token(user)
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+            reset_link = f"{settings.FRONTEND_URL}/reset-password/?uid={uidb64}&token={token}"
+
             try:
                 send_mail(
                     'Password Reset',
-                    f'Click here to reset your password: {settings.FRONTEND_URL}/reset-password/',
+                    f'Click the link below to reset your password:\n{reset_link}',
                     settings.DEFAULT_FROM_EMAIL,
                     [email],
                     fail_silently=False,
                 )
-                return Response({"detail": "Password reset email sent."}, 
-                    status=status.HTTP_200_OK)
+                return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},
+                                status=status.HTTP_200_OK)
             except Exception as e:
-                return Response({"error": "Failed to send email."}, 
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "فشل إرسال البريد الإلكتروني."},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordConfirmView(APIView):
+    def post(self, request):
+        uid = request.data.get("uid")
+        token = request.data.get("token")
+        new_password = request.data.get("new_password")
+
+        if not uid or not token or not new_password:
+            return Response({"error": "بيانات غير مكتملة."}, status=400)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uid))
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            return Response({"error": "رابط غير صالح."}, status=400)
+
+        token_generator = PasswordResetTokenGenerator()
+        if not token_generator.check_token(user, token):
+            return Response({"error": "الرابط غير صالح أو منتهي الصلاحية."}, status=400)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({"detail": "تم تغيير كلمة المرور بنجاح."}, status=200)
+
+
+
+
+
 
 class ActiveSessionsView(APIView):
     """عرض الجلسات النشطة للمستخدم"""
