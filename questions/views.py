@@ -109,6 +109,44 @@ class BookDetailView(APIView):
         book.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class BookQuestionsView(APIView):
+    """
+    Get all questions for a specific book
+    """
+    def get(self, request, book_id):
+        try:
+            book = Book.objects.get(pk=book_id)
+        except Book.DoesNotExist:
+            return Response({"detail": "Book not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get all question types for this book
+        # استعلم مباشر من العلاقات العكسية
+        mcq_questions = book.mcq_questions.all()
+        matching_questions = book.matching_question.all()
+        true_question = book.true_question.all()
+        reading_questions = ReadingQuestion.objects.filter(passage__book=book)
+
+        
+        data = {
+            'book': BookSerializer(book).data,
+            'questions': {
+                'mcq': MCQQuestionSerializer(mcq_questions, many=True).data,
+                'matching': MatchingQuestionSerializer(matching_questions, many=True).data,
+                'truefalse': TrueFalseQuestionSerializer(true_question , many=True).data,
+                'reading': ReadingQuestionSerializer(reading_questions, many=True).data,
+            },
+            'reading_passages': ReadingPassageSerializer(book.reading_passages.all(), many=True).data,
+            'statistics': {
+                'total_mcq': mcq_questions.count(),
+                'total_matching': matching_questions.count(),
+                'total_truefalse': true_question.count(),
+                'total_reading': reading_questions.count(),
+                'total_passages': book.reading_passages.count(),
+            }
+        }
+        
+        return Response(data, status=status.HTTP_200_OK)
+
 # ===================================================================
 # Reading Passage Views
 # ===================================================================
@@ -405,41 +443,7 @@ class ReadingChoiceDetailView(APIView):
 # Utility Views (إضافات مفيدة)
 # ===================================================================
 
-class BookQuestionsView(APIView):
-    """
-    Get all questions for a specific book
-    """
-    def get(self, request, book_id):
-        try:
-            book = Book.objects.get(pk=book_id)
-        except Book.DoesNotExist:
-            return Response({"detail": "Book not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Get all question types for this book
-        mcq_questions = book.all_questions.filter(mcqquestion__isnull=False)
-        matching_questions = book.all_questions.filter(matchingquestion__isnull=False)
-        truefalse_questions = book.all_questions.filter(truefalsquestion__isnull=False)
-        reading_questions = book.all_questions.filter(readingquestion__isnull=False)
-        
-        data = {
-            'book': BookSerializer(book).data,
-            'questions': {
-                'mcq': MCQQuestionSerializer(mcq_questions, many=True).data,
-                'matching': MatchingQuestionSerializer(matching_questions, many=True).data,
-                'truefalse': TrueFalseQuestionSerializer(truefalse_questions, many=True).data,
-                'reading': ReadingQuestionSerializer(reading_questions, many=True).data,
-            },
-            'reading_passages': ReadingPassageSerializer(book.reading_passages.all(), many=True).data,
-            'statistics': {
-                'total_mcq': mcq_questions.count(),
-                'total_matching': matching_questions.count(),
-                'total_truefalse': truefalse_questions.count(),
-                'total_reading': reading_questions.count(),
-                'total_passages': book.reading_passages.count(),
-            }
-        }
-        
-        return Response(data, status=status.HTTP_200_OK)
+
     # views.py
 
 

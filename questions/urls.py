@@ -8,6 +8,12 @@ from .views import (
 )
 
 urlpatterns = [
+
+    # Books
+    path('books/', BookView.as_view(), name='book-list-create'),
+    path('books/<int:pk>/', BookDetailView.as_view(), name='book-detail'),
+    path('books/<int:book_id>/questions/', BookQuestionsView.as_view(), name='book-questions'),
+    
     # MCQ
     path('mcq-questions/', MCQQuestionView.as_view(), name='mcq-question-list'),
     path('mcq-questions/<int:pk>/', MCQQuestionDetailView.as_view(), name='mcq-question-detail'),
@@ -27,10 +33,7 @@ urlpatterns = [
     path('truefalse-questions/<int:pk>/', TrueFalseQuestionDetailView.as_view(), name='truefalse-question-detail'),
 
 
-    # Books
-    path('books/', BookView.as_view(), name='book-list-create'),
-    path('books/<int:pk>/', BookDetailView.as_view(), name='book-detail'),
-    path('books/<int:book_id>/questions/', BookQuestionsView.as_view(), name='book-questions'),
+    
 
     # Reading Passages  
     path('passages/', ReadingPassageView.as_view(), name='passage-list-create'),
