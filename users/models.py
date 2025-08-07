@@ -65,7 +65,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 class UserSession(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sessions')
-    session_key = models.CharField(max_length=255, unique=True)  # JWT token أو session ID
+    session_key = models.CharField(max_length=1064, unique=True)  # JWT token أو session ID
     device_fingerprint = models.CharField(max_length=255)  # بصمة الجهاز
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()  # معلومات المتصفح/التطبيق
