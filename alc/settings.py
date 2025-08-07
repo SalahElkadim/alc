@@ -19,7 +19,7 @@ DEBUG = False
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    'alc.up.railway.app'
+    'https://alc-production-9985.up.railway.app'
 ]
 
 # Application definition
