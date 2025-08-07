@@ -50,7 +50,7 @@ class LoginView(APIView):
             except CustomUser.DoesNotExist:
                 pass
 
-        serializer = LoginSerializer(data=request.data)
+        serializer = LoginSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             # نجح تسجيل الدخول
             user = CustomUser.objects.get(email=email)
@@ -87,6 +87,7 @@ class LoginView(APIView):
             ip = request.META.get('REMOTE_ADDR')
         return ip
     
+
 
 
 class LogoutView(APIView):
@@ -226,11 +227,10 @@ class ActiveSessionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        sessions = UserSession.objects.filter(
-            user=request.user,
-            is_active=True
-        ).exclude(is_expired=True)
-        
+        sessions = UserSession.objects.filter(user=request.user,is_active=True)
+        active_sessions = [s for s in active_sessions 
+                if timezone.now() - s.last_activity <= timedelta(minutes=30)
+                ]
         sessions_data = []
         for session in sessions:
             sessions_data.append({

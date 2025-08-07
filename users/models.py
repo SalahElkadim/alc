@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 import uuid
+from datetime import timedelta
 
 
 # مدير المستخدمين (User Manager)
@@ -71,15 +72,11 @@ class UserSession(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
-
+    
+    
     class Meta:
         db_table = 'user_sessions'
         ordering = ['-last_activity']
 
     def __str__(self):
         return f"{self.user.email} - {self.device_fingerprint[:20]}"
-
-    def is_expired(self):
-        """فحص انتهاء صلاحية الجلسة (24 ساعة من آخر نشاط)"""
-        from datetime import timedelta
-        return timezone.now() > self.last_activity + timedelta(hours=24)

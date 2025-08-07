@@ -39,11 +39,19 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "access": str(tokens.access_token),
             }
         }
+    
+
+    
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
+        request = self.context.get('request')  # ✅ هنا نجيب request
+
+        if request is None:
+            raise serializers.ValidationError("Request context is not available.")
+
         email = data.get("email")
         password = data.get("password")
 
@@ -53,37 +61,30 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid email or password.")
         if not user.is_active:
             raise serializers.ValidationError("User is deactivated.")
-        # فحص الأجهزة للمستخدمين العاديين
+
         if not user.allows_multiple_devices():
             device_fingerprint = generate_device_fingerprint(request)
             ip_address = get_client_ip(request)
             
-            # فحص الجلسات النشطة
             active_sessions = UserSession.objects.filter(
                 user=user, 
                 is_active=True
-            ).exclude(is_expired=True)
+            )
             
-            # إذا كان هناك جلسة نشطة من جهاز مختلف
             current_device_session = active_sessions.filter(
                 device_fingerprint=device_fingerprint
             ).first()
             
             if not current_device_session and active_sessions.exists():
-                # إنهاء جميع الجلسات الأخرى
                 for session in active_sessions:
                     session.is_active = False
                     session.save()
-                    # يمكن إضافة blacklist للـ tokens هنا
-                
                 raise serializers.ValidationError({
                     "device_error": "This account is already logged in from another device. Previous session has been terminated."
                 })
 
-        # إنشاء tokens
         tokens = RefreshToken.for_user(user)
 
-        # تسجيل الجلسة الجديدة
         if not user.allows_multiple_devices():
             UserSession.objects.update_or_create(
                 user=user,
@@ -111,6 +112,7 @@ class LoginSerializer(serializers.Serializer):
                 "access": str(tokens.access_token),
             }
         }
+
 
     
 class ChangePasswordSerializer(serializers.Serializer):

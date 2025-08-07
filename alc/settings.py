@@ -29,7 +29,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'quiz',  
     'users',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -209,3 +208,4 @@ class Command(BaseCommand):
         expired_sessions.delete()
         
         self.stdout.write(f'Cleaned {count} expired sessions')
+
