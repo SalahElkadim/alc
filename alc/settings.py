@@ -80,6 +80,8 @@ MIDDLEWARE = [
     'users.middleware.SingleDeviceMiddleware',  # أضف هنا
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+
 ]
 CORS_ALLOW_ALL_ORIGINS = True  # مؤقتًا أثناء التطوير
 AUTH_USER_MODEL = 'users.CustomUser'

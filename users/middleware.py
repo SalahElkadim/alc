@@ -4,13 +4,16 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from .models import UserSession
 import json
+from .utils import generate_device_fingerprint
+from django.utils import timezone
+
 
 class SingleDeviceMiddleware(MiddlewareMixin):
     """Middleware لفحص الجلسات النشطة"""
     
     def process_request(self, request):
         # تجاهل بعض المسارات
-        excluded_paths = ['/users/login/', '/users/register/', '/admin/']
+        excluded_paths = ['/users/login/', '/users/register/', '/admin/','/users/logout/','/users/change-password/']
         if any(request.path.startswith(path) for path in excluded_paths):
             return None
         
