@@ -27,7 +27,6 @@ urlpatterns = [
     path('matching-questions/<int:pk>/', MatchingQuestionDetailView.as_view(), name='matching-question-detail'),
 
 
-
     # True/False
     path('truefalse-questions/', TrueFalseQuestionView.as_view(), name='truefalse-question-list'),
     path('truefalse-questions/<int:pk>/', TrueFalseQuestionDetailView.as_view(), name='truefalse-question-detail'),

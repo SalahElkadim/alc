@@ -8,8 +8,6 @@ from .utils import generate_device_fingerprint, get_client_ip
 from django.utils import timezone
 
 
-
-
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -39,18 +37,17 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "access": str(tokens.access_token),
             }
         }
-    
 
-    
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        request = self.context.get('request')  # ✅ هنا نجيب request
+        request = self.context.get('request')
 
         if request is None:
-            raise serializers.ValidationError("Request context is not available.")
+            raise serializers.ValidationError({"error_message": "Request context is not available."})
 
         email = data.get("email")
         password = data.get("password")
@@ -58,29 +55,29 @@ class LoginSerializer(serializers.Serializer):
         user = authenticate(email=email, password=password)
 
         if user is None:
-            raise serializers.ValidationError("Invalid email or password.")
+            raise serializers.ValidationError({"error_message": "Invalid email or password."})
         if not user.is_active:
-            raise serializers.ValidationError("User is deactivated.")
+            raise serializers.ValidationError({"error_message": "User is deactivated."})
 
         if not user.allows_multiple_devices():
             device_fingerprint = generate_device_fingerprint(request)
             ip_address = get_client_ip(request)
-            
+
             active_sessions = UserSession.objects.filter(
-                user=user, 
+                user=user,
                 is_active=True
             )
-            
+
             current_device_session = active_sessions.filter(
                 device_fingerprint=device_fingerprint
             ).first()
-            
+
             if not current_device_session and active_sessions.exists():
                 for session in active_sessions:
                     session.is_active = False
                     session.save()
                 raise serializers.ValidationError({
-                    "device_error": "This account is already logged in from another device. Previous session has been terminated."
+                    "error_message": "This account is already logged in from another device. Previous session has been terminated."
                 })
 
         tokens = RefreshToken.for_user(user)
@@ -114,7 +111,6 @@ class LoginSerializer(serializers.Serializer):
         }
 
 
-    
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
@@ -123,19 +119,19 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate_current_password(self, value):
         user = self.context['request'].user
         if not user.check_password(value):
-            raise serializers.ValidationError("Current password is incorrect.")
+            raise serializers.ValidationError({"error_message": "Current password is incorrect."})
         return value
 
     def validate_new_password(self, value):
         try:
             validate_password(value)
         except ValidationError as e:
-            raise serializers.ValidationError(e.messages)
+            raise serializers.ValidationError({"error_message": " ".join(e.messages)})
         return value
 
     def validate(self, data):
         if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords don't match.")
+            raise serializers.ValidationError({"error_message": "Passwords don't match."})
         return data
 
 
@@ -151,7 +147,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         try:
-            user = CustomUser.objects.get(email=value)
+            CustomUser.objects.get(email=value)
         except CustomUser.DoesNotExist:
-            raise serializers.ValidationError("User with this email does not exist.")
+            raise serializers.ValidationError({"error_message": "User with this email does not exist."})
         return value
