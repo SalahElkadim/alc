@@ -157,7 +157,7 @@ class ForgotPasswordView(APIView):
             token = token_generator.make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
-            reset_link = f"{settings.FRONTEND_URL}/reset-password/{uidb64}/{token}/"
+            reset_link = f"https://alc-production-9985.up.railway.app/reset-password/{uidb64}/{token}/"
 
 
             try:
