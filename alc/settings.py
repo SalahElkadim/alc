@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'questions',
 
 ]
-FRONTEND_URL = "https://alc-production-9985.up.railway.app"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -167,7 +166,7 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-FRONTEND_URL = 'http://localhost:3000'  # أو الـ URL بتاع الـ frontend
+#FRONTEND_URL = 'http://localhost:3000'  # أو الـ URL بتاع الـ frontend
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

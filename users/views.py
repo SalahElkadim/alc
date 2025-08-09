@@ -158,6 +158,7 @@ class ForgotPasswordView(APIView):
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
             reset_link = f"https://alc-production-9985.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
+            #reset_link = f"http://127.0.0.1:8000/users/reset-password-confirm/{uidb64}/{token}/"
 
 
             try:
@@ -178,6 +179,8 @@ class ForgotPasswordView(APIView):
 
 
 class ResetPasswordConfirmView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = [] 
     def post(self, request, uid, token):  # إضافة uid وtoken كـ parameters
         new_password = request.data.get("new_password")
         
