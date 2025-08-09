@@ -8,17 +8,21 @@ from .utils import generate_device_fingerprint, get_client_ip
 from django.utils import timezone
 
 
+from rest_framework import serializers
+from .models import CustomUser
+from rest_framework_simplejwt.tokens import RefreshToken
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
-
     class Meta:
         model = CustomUser
         fields = ['email', 'full_name', 'phone', 'user_type', 'password']
 
-    def validate_email(self, value):
-        if CustomUser.objects.filter(email=value).exists():
-            raise serializers.ValidationError({"error_message":"هذا البريد مسجل بالفعل، جرب تسجيل الدخول."})
-        return value
+    def validate(self, attrs):
+        email = attrs.get('email')
+        if CustomUser.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"error_message": "البريد الإلكتروني مسجل بالفعل"})
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -42,7 +46,6 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "access": str(tokens.access_token),
             }
         }
-
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
