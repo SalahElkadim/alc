@@ -144,6 +144,8 @@ class ProfileView(APIView):
 
 
 class ForgotPasswordView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = [] 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
