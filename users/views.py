@@ -185,6 +185,9 @@ class ResetPasswordConfirmView(APIView):
         if not uid or not token or not new_password:
             return Response({"error_message": "بيانات غير مكتملة."}, status=400)
 
+        if len(new_password) < 8:
+            return Response({"error_message": "كلمة المرور يجب أن تكون 8 أحرف على الأقل."}, status=400)
+
         try:
             uid = force_str(urlsafe_base64_decode(uid))
             user = CustomUser.objects.get(pk=uid)

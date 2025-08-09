@@ -156,9 +156,3 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-    def validate_email(self, value):
-        try:
-            CustomUser.objects.get(email=value)
-        except CustomUser.DoesNotExist:
-            raise serializers.ValidationError({"error_message": "User with this email does not exist."})
-        return value
