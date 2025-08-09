@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'questions',
 
 ]
-FRONTEND_URL = "http://localhost:3000"
+FRONTEND_URL = "https://alc-production-9985.up.railway.app"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',

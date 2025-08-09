@@ -157,7 +157,8 @@ class ForgotPasswordView(APIView):
             token = token_generator.make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
-            reset_link = f"{settings.FRONTEND_URL}/reset-password/?uid={uidb64}&token={token}"
+            reset_link = f"{settings.FRONTEND_URL}/reset-password/{uidb64}/{token}/"
+
 
             try:
                 send_mail(
@@ -177,27 +178,26 @@ class ForgotPasswordView(APIView):
 
 
 class ResetPasswordConfirmView(APIView):
-    def post(self, request):
-        uid = request.data.get("uid")
-        token = request.data.get("token")
+    def post(self, request, uid, token):  # إضافة uid وtoken كـ parameters
         new_password = request.data.get("new_password")
-
-        if not uid or not token or not new_password:
-            return Response({"error_message": "بيانات غير مكتملة."}, status=400)
-
+        
+        if not new_password:
+            return Response({"error_message": "كلمة المرور مطلوبة."}, status=400)
+        
+        # إضافة validation لكلمة المرور
         if len(new_password) < 8:
             return Response({"error_message": "كلمة المرور يجب أن تكون 8 أحرف على الأقل."}, status=400)
-
+        
         try:
-            uid = force_str(urlsafe_base64_decode(uid))
-            user = CustomUser.objects.get(pk=uid)
+            uid_decoded = force_str(urlsafe_base64_decode(uid))
+            user = CustomUser.objects.get(pk=uid_decoded)
         except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
             return Response({"error_message": "رابط غير صالح."}, status=400)
-
+        
         token_generator = PasswordResetTokenGenerator()
         if not token_generator.check_token(user, token):
             return Response({"error_message": "الرابط غير صالح أو منتهي الصلاحية."}, status=400)
-
+        
         user.set_password(new_password)
         user.save()
         return Response({"detail": "تم تغيير كلمة المرور بنجاح."}, status=200)

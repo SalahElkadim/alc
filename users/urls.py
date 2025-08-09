@@ -13,7 +13,7 @@ urlpatterns = [
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('profile/', ProfileView.as_view(), name='profile'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
-    path('reset-password-confirm/', ResetPasswordConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset-password-confirm/<str:uid>/<str:token>/', ResetPasswordConfirmView.as_view(), name='reset-password-confirm'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('sessions/', ActiveSessionsView.as_view(), name='active-sessions'),
 
