@@ -29,6 +29,8 @@ class BookView(APIView):
     """
     List all books or create a new book
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request):
         books = Book.objects.all()
         serializer = BookSerializer(books, many=True)
