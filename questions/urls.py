@@ -4,11 +4,11 @@ from .views import (
     ReadingQuestionView, ReadingQuestionDetailView,
     MatchingQuestionView, MatchingQuestionDetailView,
     TrueFalseQuestionView, TrueFalseQuestionDetailView, BookView, BookDetailView, ReadingPassageView, ReadingPassageDetailView, MCQChoiceDetailView,BookQuestionsView,
-    MatchingPairDetailView, ReadingChoiceDetailView
+    MatchingPairDetailView, ReadingChoiceDetailView, dashboard
 )
 
 urlpatterns = [
-
+    path('', dashboard, name='dashboard'),
     # Books
     path('books/', BookView.as_view(), name='book-list-create'),
     path('books/<int:pk>/', BookDetailView.as_view(), name='book-detail'),

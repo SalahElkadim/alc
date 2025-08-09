@@ -96,7 +96,7 @@ ROOT_URLCONF = 'alc.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -110,7 +110,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'alc.wsgi.application'
 
+CORS_ALLOW_ALL_ORIGINS = True  # للتطوير فقط
+CORS_ALLOW_CREDENTIALS = True
 
+# أو حدد الـ origins المسموحة
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
+
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
