@@ -17,6 +17,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['email', 'full_name', 'phone', 'user_type', 'password']
+        extra_kwargs = {
+            'email': {'validators': []},  # إزالة الـ validators من الـ email field
+        }
 
     def validate(self, attrs):
         email = attrs.get('email')
