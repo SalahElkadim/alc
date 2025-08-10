@@ -72,7 +72,15 @@ class LoginView(APIView):
                 except CustomUser.DoesNotExist:
                     pass
 
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            errors = serializer.errors
+# لو في error_message، خذ أول رسالة بدل القائمة كلها
+            if 'error_message' in errors:
+                message = errors['error_message']
+                if isinstance(message, list):
+                    message = message[0]
+                errors = {'error_message': message}
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
