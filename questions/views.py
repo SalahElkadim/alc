@@ -241,6 +241,8 @@ class MCQChoiceDetailView(APIView):
     """
     Retrieve, update or delete an MCQ choice instance
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         try:
             return MCQChoice.objects.select_related('question').get(pk=pk)
@@ -452,6 +454,8 @@ class ReadingChoiceDetailView(APIView):
 
 
 class MCQQuestionView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request):
         questions = MCQQuestion.objects.prefetch_related('choices').all()
         serializer = MCQQuestionSerializer(questions, many=True)
@@ -466,6 +470,8 @@ class MCQQuestionView(APIView):
 
 
 class MCQQuestionDetailView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(MCQQuestion, pk=pk)
 
