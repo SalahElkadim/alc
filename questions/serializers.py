@@ -205,7 +205,8 @@ class ReadingQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ReadingQuestion
-        fields = ['id', 'passage', 'text', 'correct_answer', 'reading_choices','book']
+        fields = ['id', 'passage', 'text', 'correct_answer', 'reading_choices', 'book']
+        read_only_fields = ['passage']
 
     def validate_reading_choices(self, value):
         if value:
