@@ -86,7 +86,7 @@ class MatchingPairSerializer(serializers.ModelSerializer):
 
 
 class MatchingQuestionSerializer(serializers.ModelSerializer):
-    matching_pairs = MatchingPairSerializer(many=True, source='pairs')  # ربط العلاقات صح
+    matching_pairs = MatchingPairSerializer(many=True)  # ربط العلاقات صح
 
     class Meta:
         model = MatchingQuestion
@@ -102,7 +102,7 @@ class MatchingQuestionSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        pairs_data = validated_data.pop('pairs')  # استخدم الـ source الصحيح
+        pairs_data = validated_data.pop('matching_pairs')  # استخدم الـ source الصحيح
         question = MatchingQuestion.objects.create(**validated_data)
         MatchingPair.objects.bulk_create([
             MatchingPair(question=question, **pair) for pair in pairs_data
@@ -110,7 +110,7 @@ class MatchingQuestionSerializer(serializers.ModelSerializer):
         return question
 
     def update(self, instance, validated_data):
-        pairs_data = validated_data.pop('pairs', None)
+        pairs_data = validated_data.pop('matching_pairs', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
