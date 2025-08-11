@@ -201,7 +201,7 @@ class ReadingChoiceSerializer(serializers.ModelSerializer):
 
 
 class ReadingQuestionSerializer(serializers.ModelSerializer):
-    reading_choices = ReadingChoiceSerializer(many=True, required=False)
+    reading_choices = ReadingChoiceSerializer(many=True, required=False, source='choices')
 
     class Meta:
         model = ReadingQuestion
