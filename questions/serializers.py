@@ -82,46 +82,104 @@ class MatchingPairSerializer(serializers.ModelSerializer):
     class Meta:
         model = MatchingPair
         fields = ['id', 'match_key', 'left_item', 'right_item']
-
-
+        
+    def validate_match_key(self, value):
+        """التحقق من صحة مفتاح المطابقة"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("مفتاح المطابقة مطلوب")
+        return value.strip()
+    
+    def validate_left_item(self, value):
+        """التحقق من العنصر الأيسر"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("العنصر الأيسر مطلوب")
+        return value.strip()
+    
+    def validate_right_item(self, value):
+        """التحقق من العنصر الأيمن"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("العنصر الأيمن مطلوب")
+        return value.strip()
 
 class MatchingQuestionSerializer(serializers.ModelSerializer):
-    matching_pairs = MatchingPairSerializer(many=True, source='pairs')  # ربط العلاقات صح
-
+    matching_pairs = MatchingPairSerializer(many=True, source='pairs')
+    pairs_count = serializers.SerializerMethodField()  # إضافة عدد الأزواج
+    
     class Meta:
         model = MatchingQuestion
-        fields = ['id', 'book', 'text', 'matching_pairs']
-
+        fields = ['id', 'book', 'text', 'matching_pairs', 'pairs_count']
+        
+    def get_pairs_count(self, obj):
+        """حساب عدد أزواج المطابقة"""
+        return obj.pairs.count()
+    
+    def validate_text(self, value):
+        """التحقق من نص السؤال"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("نص السؤال مطلوب")
+        return value.strip()
+    
     def validate_matching_pairs(self, value):
+        """التحقق من أزواج المطابقة"""
+        if not value:
+            raise serializers.ValidationError("يجب إضافة أزواج للمطابقة")
+        
         if len(value) < 2:
-            raise serializers.ValidationError("يجب أن يحتوي السؤال على زوجين على الأقل.")
-
+            raise serializers.ValidationError("يجب أن يحتوي السؤال على زوجين على الأقل")
+        
+        # التحقق من عدم تكرار المفاتيح
         keys = [pair['match_key'].strip() for pair in value]
         if len(keys) != len(set(keys)):
-            raise serializers.ValidationError("يجب ألا تتكرر المفاتيح.")
+            raise serializers.ValidationError("لا يمكن تكرار مفاتيح المطابقة")
+        
+        # التحقق من عدم تكرار العناصر اليسرى
+        left_items = [pair['left_item'].strip().lower() for pair in value]
+        if len(left_items) != len(set(left_items)):
+            raise serializers.ValidationError("لا يمكن تكرار العناصر اليسرى")
+        
+        # التحقق من عدم تكرار العناصر اليمنى
+        right_items = [pair['right_item'].strip().lower() for pair in value]
+        if len(right_items) != len(set(right_items)):
+            raise serializers.ValidationError("لا يمكن تكرار العناصر اليمنى")
+        
         return value
-
+    
     def create(self, validated_data):
-        pairs_data = validated_data.pop('pairs')  # This should match the source
+        """إنشاء سؤال مطابقة جديد"""
+        pairs_data = validated_data.pop('pairs')
         question = MatchingQuestion.objects.create(**validated_data)
-        MatchingPair.objects.bulk_create([
-            MatchingPair(question=question, **pair) for pair in pairs_data
-        ])
+        
+        # إنشاء الأزواج
+        pairs_to_create = [
+            MatchingPair(question=question, **pair_data) 
+            for pair_data in pairs_data
+        ]
+        MatchingPair.objects.bulk_create(pairs_to_create)
+        
         return question
-
+    
     def update(self, instance, validated_data):
+        """تعديل سؤال مطابقة موجود"""
         pairs_data = validated_data.pop('pairs', None)
+        
+        # تعديل بيانات السؤال الأساسية
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-
+        
+        # تعديل الأزواج إذا تم تمريرها
         if pairs_data is not None:
+            # حذف الأزواج القديمة
             instance.pairs.all().delete()
-            MatchingPair.objects.bulk_create([
-                MatchingPair(question=instance, **pair) for pair in pairs_data
-            ])
+            
+            # إنشاء الأزواج الجديدة
+            pairs_to_create = [
+                MatchingPair(question=instance, **pair_data) 
+                for pair_data in pairs_data
+            ]
+            MatchingPair.objects.bulk_create(pairs_to_create)
+        
         return instance
-
 
 
 # -----------------------------
