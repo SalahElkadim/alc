@@ -240,6 +240,89 @@ class ReadingPassageDetailView(APIView):
         
         passage.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class ReadingQuestionDetailView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
+    def get_object(self, pk):
+        return get_object_or_404(ReadingQuestion, pk=pk)
+
+    def get(self, request, pk):
+        question = self.get_object(pk)
+        serializer = ReadingQuestionSerializer(question)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        question = self.get_object(pk)
+        serializer = ReadingQuestionSerializer(question, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        question = self.get_object(pk)
+        question.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ReadingChoiceDetailView(APIView):
+    """
+    Retrieve, update or delete a reading choice instance
+    """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
+    def get_object(self, pk):
+        try:
+            return ReadingChoice.objects.select_related('question').get(pk=pk)
+        except ReadingChoice.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        choice = self.get_object(pk)
+        if not choice:
+            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = ReadingChoiceSerializer(choice)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        choice = self.get_object(pk)
+        if not choice:
+            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = ReadingChoiceSerializer(choice, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        choice = self.get_object(pk)
+        if not choice:
+            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = ReadingChoiceSerializer(choice, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        choice = self.get_object(pk)
+        if not choice:
+            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if this is one of the last 2 choices for the question
+        question = choice.question
+        choices_count = question.reading_choices.count()
+        if choices_count <= 2:
+            return Response(
+                {"detail": "Cannot delete choice. Question must have at least 2 choices."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        choice.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ===================================================================
 # Choice Detail Views (للتعديل والحذف)
@@ -398,64 +481,6 @@ class MatchingPairDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ReadingChoiceDetailView(APIView):
-    """
-    Retrieve, update or delete a reading choice instance
-    """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get_object(self, pk):
-        try:
-            return ReadingChoice.objects.select_related('question').get(pk=pk)
-        except ReadingChoice.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingChoiceSerializer(choice)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingChoiceSerializer(choice, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingChoiceSerializer(choice, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Check if this is one of the last 2 choices for the question
-        question = choice.question
-        choices_count = question.reading_choices.count()
-        if choices_count <= 2:
-            return Response(
-                {"detail": "Cannot delete choice. Question must have at least 2 choices."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        choice.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ===================================================================
 # Utility Views (إضافات مفيدة)
@@ -526,29 +551,7 @@ class ReadingQuestionView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ReadingQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get_object(self, pk):
-        return get_object_or_404(ReadingQuestion, pk=pk)
 
-    def get(self, request, pk):
-        question = self.get_object(pk)
-        serializer = ReadingQuestionSerializer(question)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        question = self.get_object(pk)
-        serializer = ReadingQuestionSerializer(question, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        question = self.get_object(pk)
-        question.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 from .models import MatchingQuestion
 from .serializers import MatchingQuestionSerializer

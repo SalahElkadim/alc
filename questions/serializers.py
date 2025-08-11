@@ -245,10 +245,11 @@ class ReadingQuestionSerializer(serializers.ModelSerializer):
 # -----------------------------
 class ReadingPassageSerializer(serializers.ModelSerializer):
     questions_count = serializers.SerializerMethodField()
+    reading_questions = ReadingQuestionSerializer(many=True, required=False)
 
     class Meta:
         model = ReadingPassage
-        fields = ['id', 'book', 'title', 'content', 'questions_count']
+        fields = ['id', 'book', 'title', 'content', 'questions_count', 'reading_questions']
 
     def get_questions_count(self, obj):
         return obj.reading_questions.count()
@@ -257,6 +258,22 @@ class ReadingPassageSerializer(serializers.ModelSerializer):
         if len(value.strip()) < 50:
             raise serializers.ValidationError("يجب أن يكون النص أطول من 50 حرف.")
         return value
+
+    def create(self, validated_data):
+        questions_data = validated_data.pop('reading_questions', [])
+        passage = ReadingPassage.objects.create(**validated_data)
+
+        for q_data in questions_data:
+            choices_data = q_data.pop('reading_choices', [])
+            question = ReadingQuestion.objects.create(passage=passage, **q_data)
+
+            if choices_data:
+                ReadingChoice.objects.bulk_create([
+                    ReadingChoice(question=question, **choice) for choice in choices_data
+                ])
+
+        return passage
+
 
 
 # -----------------------------
