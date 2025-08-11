@@ -191,7 +191,7 @@ class ReadingPassageDetailView(APIView):
     authentication_classes = []
     def get_object(self, pk):
         try:
-            return ReadingPassage.objects.prefetch_related('reading_questions__reading_choices').get(pk=pk)
+            return ReadingPassage.objects.prefetch_related('reading_questions__choices').get(pk=pk)
         except ReadingPassage.DoesNotExist:
             return None
 
