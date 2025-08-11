@@ -1,5 +1,6 @@
 from django.db import models
-
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 # -------------------------------------------------------------------
 class Book(models.Model):
     title = models.CharField(max_length=255)
@@ -43,6 +44,7 @@ class MCQChoice(models.Model):
         return self.text
 
 # -------------------------------------------------------------------
+@method_decorator(csrf_exempt, name='dispatch')
 class MatchingQuestion(QuestionBase):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="matching_question")
     text = models.CharField(max_length=255, null=True)
