@@ -107,7 +107,7 @@ class MatchingQuestionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = MatchingQuestion
-        fields = ['id', 'book', 'text', 'matching_pairs', 'pairs_count']
+        fields = ['id', 'book', 'text', 'matching_pairs', 'pairs_count','difficulty']
         
     def get_pairs_count(self, obj):
         """حساب عدد أزواج المطابقة"""
