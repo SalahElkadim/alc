@@ -538,6 +538,8 @@ from .models import MatchingQuestion
 from .serializers import MatchingQuestionSerializer
 
 class MatchingQuestionView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request):
         questions = MatchingQuestion.objects.prefetch_related('pairs').all()
         serializer = MatchingQuestionSerializer(questions, many=True)
