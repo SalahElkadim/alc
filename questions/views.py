@@ -45,6 +45,8 @@ class BookView(APIView):
 
 
 class BookDetailView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         try:
             return Book.objects.get(pk=pk)
@@ -117,6 +119,8 @@ class BookQuestionsView(APIView):
     """
     Get all questions for a specific book
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request, book_id):
         try:
             book = Book.objects.get(pk=book_id)
@@ -158,6 +162,8 @@ class ReadingPassageView(APIView):
     """
     List all reading passages or create a new passage
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request):
         # Support filtering by book
         book_id = request.query_params.get('book', None)
@@ -181,6 +187,8 @@ class ReadingPassageDetailView(APIView):
     """
     Retrieve, update or delete a reading passage instance
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         try:
             return ReadingPassage.objects.prefetch_related('reading_questions__reading_choices').get(pk=pk)
@@ -394,6 +402,8 @@ class ReadingChoiceDetailView(APIView):
     """
     Retrieve, update or delete a reading choice instance
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         try:
             return ReadingChoice.objects.select_related('question').get(pk=pk)
@@ -501,6 +511,8 @@ from .models import ReadingQuestion
 from .serializers import ReadingQuestionSerializer
 
 class ReadingQuestionView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request):
         questions = ReadingQuestion.objects.prefetch_related('choices').all()
         serializer = ReadingQuestionSerializer(questions, many=True)
@@ -515,6 +527,8 @@ class ReadingQuestionView(APIView):
 
 
 class ReadingQuestionDetailView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(ReadingQuestion, pk=pk)
 
@@ -583,6 +597,8 @@ from .models import TrueFalseQuestion
 from .serializers import TrueFalseQuestionSerializer
 
 class TrueFalseQuestionView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get(self, request):
         questions = TrueFalseQuestion.objects.all()
         serializer = TrueFalseQuestionSerializer(questions, many=True)
@@ -597,6 +613,8 @@ class TrueFalseQuestionView(APIView):
 
 
 class TrueFalseQuestionDetailView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(TrueFalseQuestion, pk=pk)
 
