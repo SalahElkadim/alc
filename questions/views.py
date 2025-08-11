@@ -310,6 +310,8 @@ class MatchingPairDetailView(APIView):
     """
     Retrieve, update or delete a matching pair instance
     """
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         try:
             return MatchingPair.objects.select_related('question').get(pk=pk)
