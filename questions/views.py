@@ -554,6 +554,8 @@ class MatchingQuestionView(APIView):
 
 
 class MatchingQuestionDetailView(APIView):
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(MatchingQuestion, pk=pk)
 
