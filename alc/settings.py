@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'questions',
+    'exam',
 
 ]
 REST_FRAMEWORK = {

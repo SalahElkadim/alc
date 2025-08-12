@@ -1,6 +1,6 @@
 from django.db import models
 import json
-
+from users.models import CustomUser
 # -------------------------------------------------------------------
 class Book(models.Model):
     title = models.CharField(max_length=255)
@@ -102,6 +102,7 @@ class ReadingComprehension(QuestionBase):
         
         self.questions_data.append(question_data)
         self.save()
+
 
 
 
