@@ -20,8 +20,8 @@ from questions.models import MCQQuestion, MatchingQuestion, TrueFalseQuestion, R
 
 
 class GenerateExamView(APIView):
-    permission_classes = [IsAuthenticated]
-    
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []    
     def post(self, request):
         # استخدام Serializer للتحقق من البيانات
         serializer = GenerateExamRequestSerializer(data=request.data)
@@ -204,8 +204,8 @@ class GenerateExamView(APIView):
 
 
 class GetExamView(APIView):
-    permission_classes = [IsAuthenticated]
-    
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []    
     def get(self, request, exam_id):
         try:
             exam = Exam.objects.select_related('book', 'student').get(
@@ -243,7 +243,8 @@ class GetExamView(APIView):
 
 
 class SubmitExamView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     
     def post(self, request, exam_id):
         # التحقق من صحة البيانات المرسلة
@@ -378,7 +379,8 @@ class SubmitExamView(APIView):
 
 
 class ExamResultView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     
     def get(self, request, exam_id):
         try:
@@ -401,7 +403,8 @@ class ExamResultView(APIView):
 
 
 class StudentExamsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     
     def get(self, request):
         """جلب قائمة امتحانات الطالب"""
@@ -424,7 +427,8 @@ class StudentExamsView(APIView):
 # Views إضافية للإدارة والمدرسين (اختيارية)
 class ExamAdminListView(APIView):
     """View للمدرسين/الإدارة لرؤية جميع الامتحانات"""
-    permission_classes = [IsAuthenticated]  # يمكن إضافة IsAdminUser أو IsTeacher
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []  # يمكن إضافة IsAdminUser أو IsTeacher
     
     def get(self, request):
         """جلب جميع الامتحانات مع فلترة حسب المعايير"""
@@ -467,7 +471,8 @@ class ExamAdminListView(APIView):
 
 class ExamStatisticsView(APIView):
     """View للحصول على إحصائيات شاملة للامتحانات"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []
     
     def get(self, request):
         """إحصائيات عامة للطالب أو للنظام"""
@@ -583,7 +588,8 @@ class ExamStatisticsView(APIView):
 # Utility Views
 class ExamHealthCheckView(APIView):
     """فحص حالة الامتحانات المعلقة وتنظيفها"""
-    permission_classes = [IsAuthenticated]  # يمكن تقييدها للإدارة فقط
+    permission_classes = []  # إضافة هذا السطر
+    authentication_classes = []  # يمكن تقييدها للإدارة فقط
     
     def post(self, request):
         """تنظيف الامتحانات المنتهية الصلاحية"""
