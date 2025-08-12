@@ -628,12 +628,12 @@ class AddQuestionView(APIView):
         try:
             comprehension = get_object_or_404(ReadingComprehension, pk=pk)
             
-            question_text = request.data.get('question')
+            question = request.data.get('question')
             choices = request.data.get('choices')
             correct_answer = request.data.get('correct_answer')
             
             # التحقق من البيانات المطلوبة
-            if not all([question_text, choices, correct_answer]):
+            if not all([question, choices, correct_answer]):
                 return Response({
                     'success': False,
                     'message': 'يجب إرسال السؤال والاختيارات والإجابة الصحيحة'
@@ -654,7 +654,7 @@ class AddQuestionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # إضافة السؤال
-            comprehension.add_question(question_text, choices, correct_answer)
+            comprehension.add_question(question, choices, correct_answer)
             
             return Response({
                 'success': True,
