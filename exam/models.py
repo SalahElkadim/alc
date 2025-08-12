@@ -1,10 +1,8 @@
 from django.db import models
-from users.models import CustomUser
-from questions.models import Book
 
 
 class Exam(models.Model):
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="exams")
+    student = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="exams")
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
@@ -14,7 +12,6 @@ class Exam(models.Model):
 
     def __str__(self):
         return f"Exam for {self.student} - {self.book.title}"
-
 
 
 class ExamQuestion(models.Model):
