@@ -4,9 +4,10 @@ from .models import (
     MCQQuestion, MCQChoice,
     MatchingQuestion, MatchingPair,
     TrueFalseQuestion,
-    ReadingPassage, ReadingQuestion, ReadingChoice
+    ReadingComprehension
 )
 
+admin.site.register(ReadingComprehension)
 # -------------------------
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
@@ -48,20 +49,4 @@ class TrueFalseQuestionAdmin(admin.ModelAdmin):
     search_fields = ['question_text']
 
 
-# -------------------------
-@admin.register(ReadingPassage)
-class ReadingPassageAdmin(admin.ModelAdmin):
-    list_display = ['id', 'title', 'book']
-    search_fields = ['title']
 
-
-class ReadingChoiceInline(admin.TabularInline):
-    model = ReadingChoice
-    extra = 1
-
-@admin.register(ReadingQuestion)
-class ReadingQuestionAdmin(admin.ModelAdmin):
-    list_display = ['id', 'question_text', 'difficulty', 'passage', 'correct_answer']
-    list_filter = ['difficulty', 'passage']
-    search_fields = ['question_text']
-    inlines = [ReadingChoiceInline]

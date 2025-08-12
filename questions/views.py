@@ -6,19 +6,15 @@ from django.shortcuts import render
 from .models import (
     Book, MCQQuestion, MCQChoice,
     MatchingQuestion, MatchingPair,
-    ReadingPassage, ReadingQuestion, ReadingChoice,
-    TrueFalseQuestion
+    TrueFalseQuestion, ReadingComprehension
 )
 from .serializers import (
     BookSerializer,
     MCQQuestionSerializer, MCQChoiceSerializer,
     MatchingQuestionSerializer, MatchingPairSerializer,
-    ReadingPassageSerializer, ReadingQuestionSerializer, ReadingChoiceSerializer,
-    TrueFalseQuestionSerializer,
-    # Detail serializers
-    MCQQuestionDetailSerializer,
-    MatchingQuestionDetailSerializer,
-    ReadingQuestionDetailSerializer
+    TrueFalseQuestionSerializer, ReadingComprehensionSerializer
+
+
 )
 def dashboard(request):
     return render(request,'dashboard.html' )
@@ -67,13 +63,12 @@ class BookDetailView(APIView):
                 book.mcq_questions.count() +
                 book.matching_question.count() +
                 book.true_question.count() +
-                book.reading_passages.count()
+                book.reading_comprehensions.count()
             ),
             'mcq_questions': book.mcq_questions.count(),
             'matching_question': book.matching_question.count(),
-            'true_questions': book.true_question.count(),
-            
-            'reading_passages': book.reading_passages.count(),
+            'true_questions': book.true_question.count(),           
+            'reading_comprehensions': book.reading_comprehensions.count(),
         }
         return Response(data)
 
@@ -132,7 +127,6 @@ class BookQuestionsView(APIView):
         mcq_questions = book.mcq_questions.all()
         matching_questions = book.matching_question.all()
         true_question = book.true_question.all()
-        reading_questions = ReadingQuestion.objects.filter(passage__book=book)
 
         
         data = {
@@ -141,188 +135,17 @@ class BookQuestionsView(APIView):
                 'mcq': MCQQuestionSerializer(mcq_questions, many=True).data,
                 'matching': MatchingQuestionSerializer(matching_questions, many=True).data,
                 'truefalse': TrueFalseQuestionSerializer(true_question , many=True).data,
-                'reading': ReadingQuestionSerializer(reading_questions, many=True).data,
             },
             'reading_passages': ReadingPassageSerializer(book.reading_passages.all(), many=True).data,
             'statistics': {
                 'total_mcq': mcq_questions.count(),
                 'total_matching': matching_questions.count(),
                 'total_truefalse': true_question.count(),
-                'total_reading': reading_questions.count(),
-                'total_passages': book.reading_passages.count(),
             }
         }
         
         return Response(data, status=status.HTTP_200_OK)
 
-# ===================================================================
-# Reading Passage Views
-# ===================================================================
-class ReadingPassageView(APIView):
-    """
-    List all reading passages or create a new passage
-    """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get(self, request):
-        # Support filtering by book
-        book_id = request.query_params.get('book', None)
-        if book_id:
-            passages = ReadingPassage.objects.filter(book_id=book_id)
-        else:
-            passages = ReadingPassage.objects.all()
-        
-        serializer = ReadingPassageSerializer(passages, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        serializer = ReadingPassageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ReadingPassageDetailView(APIView):
-    """
-    Retrieve, update or delete a reading passage instance
-    """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get_object(self, pk):
-        try:
-            return ReadingPassage.objects.prefetch_related('reading_questions__choices').get(pk=pk)
-        except ReadingPassage.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        passage = self.get_object(pk)
-        if not passage:
-            return Response({"detail": "Reading passage not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingPassageSerializer(passage)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        passage = self.get_object(pk)
-        if not passage:
-            return Response({"detail": "Reading passage not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingPassageSerializer(passage, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        passage = self.get_object(pk)
-        if not passage:
-            return Response({"detail": "Reading passage not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingPassageSerializer(passage, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        passage = self.get_object(pk)
-        if not passage:
-            return Response({"detail": "Reading passage not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Check if passage has questions before deleting
-        questions_count = passage.reading_questions.count()
-        if questions_count > 0:
-            return Response(
-                {"detail": f"Cannot delete passage. It contains {questions_count} questions."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        passage.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-class ReadingQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get_object(self, pk):
-        return get_object_or_404(ReadingQuestion, pk=pk)
-
-    def get(self, request, pk):
-        question = self.get_object(pk)
-        serializer = ReadingQuestionSerializer(question)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        question = self.get_object(pk)
-        serializer = ReadingQuestionSerializer(question, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        question = self.get_object(pk)
-        question.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-class ReadingChoiceDetailView(APIView):
-    """
-    Retrieve, update or delete a reading choice instance
-    """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get_object(self, pk):
-        try:
-            return ReadingChoice.objects.select_related('question').get(pk=pk)
-        except ReadingChoice.DoesNotExist:
-            return None
-
-    def get(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingChoiceSerializer(choice)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingChoiceSerializer(choice, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ReadingChoiceSerializer(choice, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        choice = self.get_object(pk)
-        if not choice:
-            return Response({"detail": "Reading choice not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Check if this is one of the last 2 choices for the question
-        question = choice.question
-        choices_count = question.reading_choices.count()
-        if choices_count <= 2:
-            return Response(
-                {"detail": "Cannot delete choice. Question must have at least 2 choices."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        choice.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ===================================================================
 # Choice Detail Views (للتعديل والحذف)
@@ -530,29 +353,6 @@ class MCQQuestionDetailView(APIView):
         question.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-# views.py
-
-from .models import ReadingQuestion
-from .serializers import ReadingQuestionSerializer
-
-class ReadingQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
-    def get(self, request):
-        questions = ReadingQuestion.objects.prefetch_related('choices').all()
-        serializer = ReadingQuestionSerializer(questions, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        serializer = ReadingQuestionSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
 from .models import MatchingQuestion
 from .serializers import MatchingQuestionSerializer
 
@@ -638,3 +438,259 @@ class TrueFalseQuestionDetailView(APIView):
         question = self.get_object(pk)
         question.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReadingComprehensionListCreateView(APIView):
+    """
+    GET: عرض جميع قطع القراءة
+    POST: إضافة قطعة قراءة جديدة
+    """
+    permission_classes = []
+    authentication_classes = []
+    def get(self, request):
+        """عرض جميع قطع القراءة"""
+        try:
+            comprehensions = ReadingComprehension.objects.select_related('book').all()
+            serializer = ReadingComprehensionSerializer(comprehensions, many=True)
+            
+            return Response({
+                'success': True,
+                'count': comprehensions.count(),
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في جلب البيانات: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def post(self, request):
+        """إضافة قطعة قراءة جديدة"""
+        try:
+            serializer = ReadingComprehensionSerializer(data=request.data)
+            
+            if serializer.is_valid():
+                # التحقق من وجود الكتاب
+                book_id = request.data.get('book')
+                if not Book.objects.filter(id=book_id).exists():
+                    return Response({
+                        'success': False,
+                        'message': 'الكتاب المحدد غير موجود'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                comprehension = serializer.save()
+                
+                return Response({
+                    'success': True,
+                    'message': 'تم إضافة قطعة القراءة بنجاح',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response({
+                'success': False,
+                'message': 'خطأ في البيانات المرسلة',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في إضافة القطعة: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ReadingComprehensionDetailView(APIView):
+    """
+    GET: عرض قطعة قراءة محددة
+    PUT: تعديل كامل لقطعة القراءة
+    PATCH: تعديل جزئي لقطعة القراءة
+    DELETE: حذف قطعة القراءة
+    """
+    permission_classes = []
+    authentication_classes = []
+    def get_object(self, pk):
+        """الحصول على قطعة القراءة أو إرجاع 404"""
+        return get_object_or_404(ReadingComprehension, pk=pk)
+    
+    def get(self, request, pk):
+        """عرض قطعة قراءة محددة"""
+        try:
+            comprehension = self.get_object(pk)
+            serializer = ReadingComprehensionSerializer(comprehension)
+            
+            return Response({
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في جلب البيانات: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def put(self, request, pk):
+        """تعديل قطعة قراءة (تعديل كامل)"""
+        try:
+            comprehension = self.get_object(pk)
+            serializer = ReadingComprehensionSerializer(comprehension, data=request.data)
+            
+            if serializer.is_valid():
+                # التحقق من وجود الكتاب إذا تم تعديله
+                book_id = request.data.get('book')
+                if book_id and not Book.objects.filter(id=book_id).exists():
+                    return Response({
+                        'success': False,
+                        'message': 'الكتاب المحدد غير موجود'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                serializer.save()
+                
+                return Response({
+                    'success': True,
+                    'message': 'تم تعديل قطعة القراءة بنجاح',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                'success': False,
+                'message': 'خطأ في البيانات المرسلة',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في تعديل القطعة: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def patch(self, request, pk):
+        """تعديل جزئي لقطعة القراءة"""
+        try:
+            comprehension = self.get_object(pk)
+            serializer = ReadingComprehensionSerializer(comprehension, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                # التحقق من وجود الكتاب إذا تم تعديله
+                book_id = request.data.get('book')
+                if book_id and not Book.objects.filter(id=book_id).exists():
+                    return Response({
+                        'success': False,
+                        'message': 'الكتاب المحدد غير موجود'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                serializer.save()
+                
+                return Response({
+                    'success': True,
+                    'message': 'تم تعديل قطعة القراءة بنجاح',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                'success': False,
+                'message': 'خطأ في البيانات المرسلة',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في تعديل القطعة: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def delete(self, request, pk):
+        """حذف قطعة قراءة"""
+        try:
+            comprehension = self.get_object(pk)
+            title = comprehension.title  # حفظ العنوان قبل الحذف
+            comprehension.delete()
+            
+            return Response({
+                'success': True,
+                'message': f'تم حذف قطعة القراءة "{title}" بنجاح'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في حذف القطعة: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AddQuestionView(APIView):
+    """إضافة سؤال جديد لقطعة قراءة محددة"""
+    permission_classes = []
+    authentication_classes = []
+    def post(self, request, pk):
+        """إضافة سؤال جديد لقطعة القراءة"""
+        try:
+            comprehension = get_object_or_404(ReadingComprehension, pk=pk)
+            
+            question_text = request.data.get('question')
+            choices = request.data.get('choices')
+            correct_answer = request.data.get('correct_answer')
+            
+            # التحقق من البيانات المطلوبة
+            if not all([question_text, choices, correct_answer]):
+                return Response({
+                    'success': False,
+                    'message': 'يجب إرسال السؤال والاختيارات والإجابة الصحيحة'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # التحقق من أن الاختيارات قائمة
+            if not isinstance(choices, list) or len(choices) < 2:
+                return Response({
+                    'success': False,
+                    'message': 'الاختيارات يجب أن تكون قائمة تحتوي على خيارين على الأقل'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # التحقق من أن الإجابة الصحيحة من ضمن الاختيارات
+            if correct_answer not in choices:
+                return Response({
+                    'success': False,
+                    'message': 'الإجابة الصحيحة يجب أن تكون من ضمن الاختيارات'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # إضافة السؤال
+            comprehension.add_question(question_text, choices, correct_answer)
+            
+            return Response({
+                'success': True,
+                'message': 'تم إضافة السؤال بنجاح',
+                'questions_count': comprehension.get_question_count()
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في إضافة السؤال: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ReadingsByBookView(APIView):
+    """جلب قطع القراءة الخاصة بكتاب معين"""
+    permission_classes = []
+    authentication_classes = []
+    def get(self, request, book_id):
+        """جلب جميع قطع القراءة لكتاب محدد"""
+        try:
+            # التحقق من وجود الكتاب
+            book = get_object_or_404(Book, pk=book_id)
+            
+            comprehensions = ReadingComprehension.objects.filter(book=book)
+            serializer = ReadingComprehensionSerializer(comprehensions, many=True)
+            
+            return Response({
+                'success': True,
+                'book_title': book.title,
+                'count': comprehensions.count(),
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'خطأ في جلب البيانات: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

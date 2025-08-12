@@ -2,8 +2,7 @@ from rest_framework import serializers
 from .models import (
     MCQQuestion, MCQChoice,
     MatchingQuestion, MatchingPair,
-    ReadingPassage, ReadingQuestion, ReadingChoice,
-    TrueFalseQuestion,Book
+    TrueFalseQuestion,Book,ReadingComprehension
 )
 
 # -----------------------------
@@ -191,105 +190,45 @@ class TrueFalseQuestionSerializer(serializers.ModelSerializer):
         fields = ['id', 'book', 'text', 'is_true']
 
 
-# -----------------------------
-# Reading Question
-# -----------------------------
-class ReadingChoiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ReadingChoice
-        fields = ['id', 'text']
 
 
-class ReadingQuestionSerializer(serializers.ModelSerializer):
-    reading_choices = ReadingChoiceSerializer(many=True, required=False, source='choices')
-
-    class Meta:
-        model = ReadingQuestion
-        fields = ['id', 'passage', 'text', 'correct_answer', 'reading_choices', 'book','difficulty']
-        read_only_fields = ['passage']
-
-    def validate_reading_choices(self, value):
-        if value:
-            if len(value) < 2:
-                raise serializers.ValidationError("يجب أن تحتوي الخيارات على اثنين على الأقل.")
-
-            texts = [choice['text'].strip() for choice in value]
-            if len(texts) != len(set(texts)):
-                raise serializers.ValidationError("يجب ألا تتكرر نصوص الخيارات.")
-        return value
-
-    def create(self, validated_data):
-        choices_data = validated_data.pop('reading_choices', [])
-        question = ReadingQuestion.objects.create(**validated_data)
-        if choices_data:
-            ReadingChoice.objects.bulk_create([
-                ReadingChoice(question=question, **choice) for choice in choices_data
-            ])
-        return question
-
-    def update(self, instance, validated_data):
-        choices_data = validated_data.pop('reading_choices', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        if choices_data is not None:
-            instance.reading_choices.all().delete()
-            ReadingChoice.objects.bulk_create([
-                ReadingChoice(question=instance, **choice) for choice in choices_data
-            ])
-        return instance
-
-
-# -----------------------------
-# Reading Passage
-# -----------------------------
-class ReadingPassageSerializer(serializers.ModelSerializer):
+class ReadingComprehensionSerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source='book.title', read_only=True)
     questions_count = serializers.SerializerMethodField()
-    reading_questions = ReadingQuestionSerializer(many=True, required=False)
-
+    
     class Meta:
-        model = ReadingPassage
-        fields = ['id', 'book', 'title', 'content', 'questions_count', 'reading_questions']
-
+        model = ReadingComprehension
+        fields = ['id', 'book', 'book_title', 'title', 'content', 'questions_data', 
+                 'questions_count', 'created_at', 'updated_at']
+    
     def get_questions_count(self, obj):
-        return obj.reading_questions.count()
-
-    def validate_content(self, value):
-        if len(value.strip()) < 50:
-            raise serializers.ValidationError("يجب أن يكون النص أطول من 50 حرف.")
+        """عدد الأسئلة في القطعة"""
+        return obj.get_question_count()
+    
+    def validate_questions_data(self, value):
+        """التحقق من صحة بيانات الأسئلة"""
+        if not isinstance(value, list):
+            raise serializers.ValidationError("الأسئلة يجب أن تكون في شكل قائمة")
+        
+        for i, question in enumerate(value):
+            if not isinstance(question, dict):
+                raise serializers.ValidationError(f"السؤال رقم {i+1} يجب أن يكون object")
+            
+            required_fields = ['question', 'choices', 'correct_answer']
+            for field in required_fields:
+                if field not in question:
+                    raise serializers.ValidationError(f"السؤال رقم {i+1} يفتقد للحقل: {field}")
+            
+            # التحقق من الاختيارات
+            choices = question.get('choices')
+            if not isinstance(choices, list) or len(choices) < 2:
+                raise serializers.ValidationError(f"السؤال رقم {i+1}: الاختيارات يجب أن تكون قائمة تحتوي على خيارين على الأقل")
+            
+            # التحقق من الإجابة الصحيحة
+            correct_answer = question.get('correct_answer')
+            if correct_answer not in choices:
+                raise serializers.ValidationError(f"السؤال رقم {i+1}: الإجابة الصحيحة يجب أن تكون من ضمن الاختيارات")
+        
         return value
-
-    def create(self, validated_data):
-        questions_data = validated_data.pop('reading_questions', [])
-        passage = ReadingPassage.objects.create(**validated_data)
-
-        for q_data in questions_data:
-            choices_data = q_data.pop('reading_choices', [])
-            question = ReadingQuestion.objects.create(passage=passage, **q_data)
-
-            if choices_data:
-                ReadingChoice.objects.bulk_create([
-                    ReadingChoice(question=question, **choice) for choice in choices_data
-                ])
-
-        return passage
-
-
-
-# -----------------------------
-# Detail Serializers (Optional use)
-# -----------------------------
-class MCQQuestionDetailSerializer(MCQQuestionSerializer):
-    mcq_choices = MCQChoiceSerializer(many=True, read_only=True)
-
-class MatchingQuestionDetailSerializer(MatchingQuestionSerializer):
-    matching_pairs = MatchingPairSerializer(many=True, read_only=True)
-
-class ReadingQuestionDetailSerializer(ReadingQuestionSerializer):
-    reading_choices = ReadingChoiceSerializer(many=True, read_only=True)
-
-class TrueFalseQuestionDetailSerializer(TrueFalseQuestionSerializer):
-    pass
 
 

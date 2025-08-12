@@ -1,4 +1,5 @@
 from django.db import models
+import json
 
 # -------------------------------------------------------------------
 class Book(models.Model):
@@ -69,27 +70,38 @@ class TrueFalseQuestion(QuestionBase):
         return self.question_text
 
 # -------------------------------------------------------------------
-class ReadingPassage(models.Model):
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="reading_passages")
-    title = models.CharField(max_length=255)
-    content = models.TextField()
-
-    def __str__(self):
-        return self.title
-
-class ReadingQuestion(QuestionBase):
-    passage = models.ForeignKey(ReadingPassage, on_delete=models.CASCADE, related_name="reading_questions")
-    correct_answer = models.CharField(max_length=255)
-    text = models.CharField(max_length=255, null=True)
 
 
-    def __str__(self):
-        return self.text
+class ReadingComprehension(QuestionBase):
+    # معلومات القطعة الأساسية
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name="reading_comprehensions")
+    title = models.CharField(max_length=255, verbose_name="عنوان القطعة")
+    content = models.TextField(verbose_name="محتوى القطعة")
     
-class ReadingChoice(models.Model):
-    question = models.ForeignKey(ReadingQuestion, on_delete=models.CASCADE, related_name="choices")
-    text = models.CharField(max_length=255)
-    is_correct = models.BooleanField(default=False)  # إضافة هذا الحقل
-
+    # الأسئلة والإجابات في شكل JSON
+    questions_data = models.JSONField(
+        default=list,
+        verbose_name="الأسئلة والإجابات",
+        help_text="قائمة بالأسئلة والاختيارات والإجابات الصحيحة"
+    )
+    
     def __str__(self):
-        return self.text
+        return f"{self.title} - {self.book.title if self.book else 'بدون كتاب'}"
+    
+    # دوال مساعدة للتعامل مع الأسئلة
+    def add_question(self, question_text, choices, correct_answer):
+        """إضافة سؤال جديد"""
+        question_data = {
+            'question': question_text,
+            'choices': choices,  # قائمة بالاختيارات
+            'correct_answer': correct_answer  # الإجابة الصحيحة
+        }
+        
+        if not self.questions_data:
+            self.questions_data = []
+        
+        self.questions_data.append(question_data)
+        self.save()
+
+
+
