@@ -26,11 +26,3 @@ urlpatterns = [
     # ViewSet URLs (بديل)
     path('api/', include(router.urls)),
 ]
-
-# URLs إضافية للتطوير والاختبار
-from django.conf import settings
-if settings.DEBUG:
-    urlpatterns += [
-        # API Documentation
-        path('docs/', views.ExamAPIDocumentationView.as_view(), name='api-docs'),
-    ]
