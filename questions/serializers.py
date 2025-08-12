@@ -199,7 +199,7 @@ class ReadingComprehensionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReadingComprehension
         fields = ['id', 'book', 'book_title', 'title', 'content', 'questions_data', 
-                 'questions_count', 'created_at', 'updated_at']
+                 'questions_count']
     
     def get_questions_count(self, obj):
         """عدد الأسئلة في القطعة"""
