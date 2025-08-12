@@ -97,16 +97,7 @@ class BookDetailView(APIView):
     def delete(self, request, pk):
         book = self.get_object(pk)
         if not book:
-            return Response({"detail": "Book not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Check if book has questions before deleting
-        total_questions = book.all_questions.count() + book.reading_passages.count()
-        if total_questions > 0:
-            return Response(
-                {"detail": f"Cannot delete book. It contains {total_questions} questions/passages."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({"detail": "Book not found."}, status=status.HTTP_404_NOT_FOUND)       
         book.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
