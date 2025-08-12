@@ -136,7 +136,7 @@ class BookQuestionsView(APIView):
                 'matching': MatchingQuestionSerializer(matching_questions, many=True).data,
                 'truefalse': TrueFalseQuestionSerializer(true_question , many=True).data,
             },
-            'reading_passages': ReadingPassageSerializer(book.reading_passages.all(), many=True).data,
+            'reading_passages': ReadingComprehensionSerializer(book.reading_comprehensions.all(), many=True).data,
             'statistics': {
                 'total_mcq': mcq_questions.count(),
                 'total_matching': matching_questions.count(),
