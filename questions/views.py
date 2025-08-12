@@ -659,7 +659,6 @@ class AddQuestionView(APIView):
             return Response({
                 'success': True,
                 'message': 'تم إضافة السؤال بنجاح',
-                'questions_count': comprehension.get_question_count()
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
