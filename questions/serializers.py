@@ -194,7 +194,6 @@ class TrueFalseQuestionSerializer(serializers.ModelSerializer):
 
 class ReadingComprehensionSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source='book.title', read_only=True)
-    questions_count = serializers.SerializerMethodField()
     
     class Meta:
         model = ReadingComprehension
