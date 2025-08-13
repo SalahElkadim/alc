@@ -1,5 +1,5 @@
 from django.db import models
-
+from questions.models import Book
 
 class Exam(models.Model):
     student = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="exams")
