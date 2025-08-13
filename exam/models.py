@@ -1,8 +1,9 @@
 from django.db import models
 from questions.models import Book
+from users.models import CustomUser
 
 class Exam(models.Model):
-    student = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="exams")
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="exams")
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
