@@ -10,6 +10,8 @@ class Exam(models.Model):
     duration_minutes = models.PositiveIntegerField(default=30)
     is_finished = models.BooleanField(default=False)
     score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    difficulty = models.CharField(max_length=30, choices=[("easy", "Easy"), ("medium", "Medium"), ("hard", "Hard")], null= True)
+
 
     def __str__(self):
         return f"Exam for {self.student} - {self.book.title}"

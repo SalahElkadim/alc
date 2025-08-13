@@ -187,7 +187,7 @@ class MatchingQuestionSerializer(serializers.ModelSerializer):
 class TrueFalseQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrueFalseQuestion
-        fields = ['id', 'book', 'text', 'is_true']
+        fields = ['id', 'book', 'text', 'is_true','difficulty']
 
 
 
@@ -197,7 +197,7 @@ class ReadingComprehensionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ReadingComprehension
-        fields = ['id', 'book', 'book_title', 'title', 'content', 'questions_data', 
+        fields = ['id', 'book', 'book_title', 'title', 'content', 'questions_data' ,'difficulty'
                 ]
     
     def validate_questions_data(self, value):
