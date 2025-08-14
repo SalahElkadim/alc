@@ -101,12 +101,20 @@ class MatchingPairSerializer(serializers.ModelSerializer):
         return value.strip()
 
 class MatchingQuestionSerializer(serializers.ModelSerializer):
+    # للقراءة
     matching_pairs = serializers.SerializerMethodField()
+    # للكتابة
+    input_matching_pairs = MatchingPairSerializer(many=True, source='pairs', write_only=True)
+    
     pairs_count = serializers.SerializerMethodField()
 
     class Meta:
         model = MatchingQuestion
-        fields = ['id', 'book', 'text', 'matching_pairs', 'pairs_count', 'difficulty']
+        fields = [
+            'id', 'book', 'text',
+            'matching_pairs', 'input_matching_pairs',
+            'pairs_count', 'difficulty'
+        ]
 
     def get_matching_pairs(self, obj):
         left_items = [p.left_item for p in obj.pairs.all()]
@@ -118,33 +126,6 @@ class MatchingQuestionSerializer(serializers.ModelSerializer):
 
     def get_pairs_count(self, obj):
         return obj.pairs.count()
-
-    # هنحتفظ بنفس تحقق البيانات من الموديل القديم
-    def validate_text(self, value):
-        if not value or not value.strip():
-            raise serializers.ValidationError("نص السؤال مطلوب")
-        return value.strip()
-
-    def validate_matching_pairs(self, value):
-        if not value:
-            raise serializers.ValidationError("يجب إضافة أزواج للمطابقة")
-        
-        if len(value) < 2:
-            raise serializers.ValidationError("يجب أن يحتوي السؤال على زوجين على الأقل")
-        
-        keys = [pair['match_key'].strip() for pair in value]
-        if len(keys) != len(set(keys)):
-            raise serializers.ValidationError("لا يمكن تكرار مفاتيح المطابقة")
-        
-        left_items = [pair['left_item'].strip().lower() for pair in value]
-        if len(left_items) != len(set(left_items)):
-            raise serializers.ValidationError("لا يمكن تكرار العناصر اليسرى")
-        
-        right_items = [pair['right_item'].strip().lower() for pair in value]
-        if len(right_items) != len(set(right_items)):
-            raise serializers.ValidationError("لا يمكن تكرار العناصر اليمنى")
-        
-        return value
 
     def create(self, validated_data):
         pairs_data = validated_data.pop('pairs')
@@ -165,6 +146,7 @@ class MatchingQuestionSerializer(serializers.ModelSerializer):
             MatchingPair.objects.bulk_create(pairs_to_create)
 
         return instance
+
 
 
 # -----------------------------
