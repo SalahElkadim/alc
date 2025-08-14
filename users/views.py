@@ -167,7 +167,7 @@ class ForgotPasswordView(APIView):
             token = token_generator.make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
-            reset_link = f"https://alc-production-9985.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
+            reset_link = f"https://alcreactapp-production.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
             #reset_link = f"http://127.0.0.1:8000/users/reset-password-confirm/{uidb64}/{token}/"
 
 
