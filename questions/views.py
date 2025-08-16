@@ -5,7 +5,7 @@ from rest_framework.generics import get_object_or_404
 from django.shortcuts import render
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .permissions import IsAdminUserType
+from users.permissions import IsAdminUserType
 
 class AddQuestionView(APIView):
     """إضافة سؤال جديد لقطعة قراءة محددة"""
