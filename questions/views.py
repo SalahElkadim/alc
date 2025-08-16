@@ -3,6 +3,18 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from django.shortcuts import render
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from .permissions import IsAdminUserType
+
+class AddQuestionView(APIView):
+    """إضافة سؤال جديد لقطعة قراءة محددة"""
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
+
+    def post(self, request, pk):
+        ...
+
 from .models import (
     Book, MCQQuestion, MCQChoice,
     MatchingQuestion, MatchingPair,
@@ -25,8 +37,8 @@ class BookView(APIView):
     """
     List all books or create a new book
     """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request):
         books = Book.objects.all()
         serializer = BookSerializer(books, many=True)
@@ -41,8 +53,8 @@ class BookView(APIView):
 
 
 class BookDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         try:
             return Book.objects.get(pk=pk)
@@ -105,8 +117,8 @@ class BookQuestionsView(APIView):
     """
     Get all questions for a specific book
     """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request, book_id):
         try:
             book = Book.objects.get(pk=book_id)
@@ -146,8 +158,8 @@ class MCQChoiceDetailView(APIView):
     """
     Retrieve, update or delete an MCQ choice instance
     """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         try:
             return MCQChoice.objects.select_related('question').get(pk=pk)
@@ -215,8 +227,8 @@ class MatchingPairDetailView(APIView):
     """
     Retrieve, update or delete a matching pair instance
     """
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         try:
             return MatchingPair.objects.select_related('question').get(pk=pk)
@@ -305,8 +317,8 @@ class MatchingPairDetailView(APIView):
 
 
 class MCQQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request):
         questions = MCQQuestion.objects.prefetch_related('choices').all()
         serializer = MCQQuestionSerializer(questions, many=True)
@@ -321,8 +333,8 @@ class MCQQuestionView(APIView):
 
 
 class MCQQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         return get_object_or_404(MCQQuestion, pk=pk)
 
@@ -348,8 +360,8 @@ from .models import MatchingQuestion
 from .serializers import MatchingQuestionSerializer
 
 class MatchingQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request):
         questions = MatchingQuestion.objects.prefetch_related('pairs').all()
         serializer = MatchingQuestionSerializer(questions, many=True)
@@ -364,8 +376,8 @@ class MatchingQuestionView(APIView):
 
 
 class MatchingQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         return get_object_or_404(MatchingQuestion, pk=pk)
 
@@ -391,8 +403,8 @@ from .models import TrueFalseQuestion
 from .serializers import TrueFalseQuestionSerializer
 
 class TrueFalseQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request):
         questions = TrueFalseQuestion.objects.all()
         serializer = TrueFalseQuestionSerializer(questions, many=True)
@@ -407,8 +419,8 @@ class TrueFalseQuestionView(APIView):
 
 
 class TrueFalseQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         return get_object_or_404(TrueFalseQuestion, pk=pk)
 
@@ -436,8 +448,8 @@ class ReadingComprehensionListCreateView(APIView):
     GET: عرض جميع قطع القراءة
     POST: إضافة قطعة قراءة جديدة
     """
-    permission_classes = []
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request):
         """عرض جميع قطع القراءة"""
         try:
@@ -498,8 +510,8 @@ class ReadingComprehensionDetailView(APIView):
     PATCH: تعديل جزئي لقطعة القراءة
     DELETE: حذف قطعة القراءة
     """
-    permission_classes = []
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get_object(self, pk):
         """الحصول على قطعة القراءة أو إرجاع 404"""
         return get_object_or_404(ReadingComprehension, pk=pk)
@@ -612,8 +624,8 @@ class ReadingComprehensionDetailView(APIView):
 
 class AddQuestionView(APIView):
     """إضافة سؤال جديد لقطعة قراءة محددة"""
-    permission_classes = []
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def post(self, request, pk):
         """إضافة سؤال جديد لقطعة القراءة"""
         try:
@@ -661,8 +673,8 @@ class AddQuestionView(APIView):
 
 class ReadingsByBookView(APIView):
     """جلب قطع القراءة الخاصة بكتاب معين"""
-    permission_classes = []
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]  
+    permission_classes = [IsAuthenticated, IsAdminUserType]  
     def get(self, request, book_id):
         """جلب جميع قطع القراءة لكتاب محدد"""
         try:
