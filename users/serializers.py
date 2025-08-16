@@ -70,41 +70,7 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError({"error_message": "User is deactivated."})
 
-        if not user.allows_multiple_devices():
-            device_fingerprint = generate_device_fingerprint(request)
-            ip_address = get_client_ip(request)
-
-            active_sessions = UserSession.objects.filter(
-                user=user,
-                is_active=True
-            )
-
-            current_device_session = active_sessions.filter(
-                device_fingerprint=device_fingerprint
-            ).first()
-
-            if not current_device_session and active_sessions.exists():
-                for session in active_sessions:
-                    session.is_active = False
-                    session.save()
-                raise serializers.ValidationError({
-                    "error_message": "This account is already logged in from another device. Previous session has been terminated."
-                })
-
         tokens = RefreshToken.for_user(user)
-
-        if not user.allows_multiple_devices():
-            UserSession.objects.update_or_create(
-                user=user,
-                device_fingerprint=device_fingerprint,
-                defaults={
-                    'session_key': str(tokens.access_token),
-                    'ip_address': ip_address,
-                    'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-                    'last_activity': timezone.now(),
-                    'is_active': True
-                }
-            )
 
         return {
             "user": {

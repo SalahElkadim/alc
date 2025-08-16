@@ -30,7 +30,6 @@ class RegisterView(APIView):
             return Response(serializer.to_representation(user), status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class LoginView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -58,6 +57,27 @@ class LoginView(APIView):
             user.account_locked_until = None
             user.save()
 
+            # إنشاء UserSession
+            device_fingerprint = generate_device_fingerprint(request)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            
+            # الحصول على JWT token من الـ serializer
+            access_token = serializer.validated_data['tokens']['access']
+            
+            # إلغاء الجلسات السابقة للطلاب فقط
+            if not user.allows_multiple_devices():
+                UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
+            
+            # إنشاء جلسة جديدة
+            UserSession.objects.create(
+                user=user,
+                session_key=access_token,
+                device_fingerprint=device_fingerprint,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                is_active=True
+            )
+
             logger.info(f"Successful login for user: {email} from IP: {ip_address}")
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         else:
@@ -73,14 +93,13 @@ class LoginView(APIView):
                     pass
 
             errors = serializer.errors
-# لو في error_message، خذ أول رسالة بدل القائمة كلها
+            # لو في error_message، خذ أول رسالة بدل القائمة كلها
             if 'error_message' in errors:
                 message = errors['error_message']
                 if isinstance(message, list):
                     message = message[0]
                 errors = {'error_message': message}
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
 
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
