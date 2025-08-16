@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from django.shortcuts import render
+from rest_framework import status, permissions
 
 from .models import (
     Book, MCQQuestion, MCQChoice,
@@ -26,7 +27,7 @@ class BookView(APIView):
     """
     List all books or create a new book
     """
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request):
         books = Book.objects.all()
@@ -42,7 +43,7 @@ class BookView(APIView):
 
 
 class BookDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         try:
@@ -106,7 +107,7 @@ class BookQuestionsView(APIView):
     """
     Get all questions for a specific book
     """
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request, book_id):
         try:
@@ -147,7 +148,7 @@ class MCQChoiceDetailView(APIView):
     """
     Retrieve, update or delete an MCQ choice instance
     """
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         try:
@@ -216,7 +217,7 @@ class MatchingPairDetailView(APIView):
     """
     Retrieve, update or delete a matching pair instance
     """
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         try:
@@ -306,7 +307,7 @@ class MatchingPairDetailView(APIView):
 
 
 class MCQQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request):
         questions = MCQQuestion.objects.prefetch_related('choices').all()
@@ -322,7 +323,7 @@ class MCQQuestionView(APIView):
 
 
 class MCQQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(MCQQuestion, pk=pk)
@@ -349,7 +350,7 @@ from .models import MatchingQuestion
 from .serializers import MatchingQuestionSerializer
 
 class MatchingQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request):
         questions = MatchingQuestion.objects.prefetch_related('pairs').all()
@@ -365,7 +366,7 @@ class MatchingQuestionView(APIView):
 
 
 class MatchingQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(MatchingQuestion, pk=pk)
@@ -392,7 +393,7 @@ from .models import TrueFalseQuestion
 from .serializers import TrueFalseQuestionSerializer
 
 class TrueFalseQuestionView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request):
         questions = TrueFalseQuestion.objects.all()
@@ -408,7 +409,7 @@ class TrueFalseQuestionView(APIView):
 
 
 class TrueFalseQuestionDetailView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         return get_object_or_404(TrueFalseQuestion, pk=pk)
@@ -437,7 +438,7 @@ class ReadingComprehensionListCreateView(APIView):
     GET: عرض جميع قطع القراءة
     POST: إضافة قطعة قراءة جديدة
     """
-    permission_classes = []
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request):
         """عرض جميع قطع القراءة"""
@@ -499,7 +500,7 @@ class ReadingComprehensionDetailView(APIView):
     PATCH: تعديل جزئي لقطعة القراءة
     DELETE: حذف قطعة القراءة
     """
-    permission_classes = []
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get_object(self, pk):
         """الحصول على قطعة القراءة أو إرجاع 404"""
@@ -613,7 +614,7 @@ class ReadingComprehensionDetailView(APIView):
 
 class AddQuestionView(APIView):
     """إضافة سؤال جديد لقطعة قراءة محددة"""
-    permission_classes = []
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def post(self, request, pk):
         """إضافة سؤال جديد لقطعة القراءة"""
@@ -662,7 +663,7 @@ class AddQuestionView(APIView):
 
 class ReadingsByBookView(APIView):
     """جلب قطع القراءة الخاصة بكتاب معين"""
-    permission_classes = []
+    permission_classes = [permissions.IsAdminUser]
     authentication_classes = []
     def get(self, request, book_id):
         """جلب جميع قطع القراءة لكتاب محدد"""
