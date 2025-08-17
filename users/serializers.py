@@ -16,7 +16,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     class Meta:
         model = CustomUser
-        fields = ['email', 'full_name', 'phone', 'user_type', 'password']
+        fields = ['email', 'full_name', 'phone', 'user_type', 'password', 'is_staff']
         extra_kwargs = {
             'email': {'validators': []},  # إزالة الـ validators من الـ email field
         }
@@ -43,6 +43,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "full_name": instance.full_name,
                 "phone": instance.phone,
                 "user_type": instance.user_type,
+                "is_staff":instance.is_staff
             },
             "tokens": {
                 "refresh": str(tokens),
@@ -80,6 +81,7 @@ class LoginSerializer(serializers.Serializer):
                 "phone": user.phone,
                 "user_type": user.user_type,
                 "allows_multiple_devices": user.allows_multiple_devices(),
+                "is_staff":user.is_staff
             },
             "tokens": {
                 "refresh": str(tokens),
