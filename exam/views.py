@@ -9,6 +9,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Exam, ExamQuestion
 from questions.models import MCQQuestion, MatchingQuestion, TrueFalseQuestion, ReadingComprehension
 from .serializers import ExamSerializer
+from django.shortcuts import get_object_or_404
 
 
 
@@ -94,57 +95,56 @@ class SubmitExamAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        exam_id = request.data.get("exam_id")
-        answers = request.data.get("answers", [])
+        exam_id = request.data.get("exam_id")  # من البودي
+        if not exam_id:
+            return Response({"error": "exam_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             exam = Exam.objects.get(id=exam_id, student=request.user)
         except Exam.DoesNotExist:
             return Response({"error": "Exam not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        answers = request.data.get("answers", {})
+
+        if not answers:
+            return Response({"error": "Answers are required"}, status=status.HTTP_400_BAD_REQUEST)
+
         total_score = 0
         max_score = 0
 
-        for eq, ans in zip(exam.exam_questions.all(), answers):
-            eq.student_answer = ans
+        for eq in exam.exam_questions.all():
+            max_score += eq.points
+            student_answer = answers.get(str(eq.question_id))
+ # لازم تبقى string عشان JSON
 
-            if eq.question_type in ["mcq", "truefalse"]:
-                eq.is_correct = (eq.student_answer == eq.correct_answer)
-                max_score += float(eq.points)
-                if eq.is_correct:
-                    total_score += float(eq.points)
+            if student_answer is None:
+                continue  # الطالب ماجاوبش السؤال
+
+            # مقارنة الإجابة حسب نوع السؤال
+            if eq.question_type == "mcq":
+                if str(student_answer).strip() == str(eq.correct_answer).strip():
+                    total_score += eq.points
+
+            elif eq.question_type == "truefalse":
+                if bool(student_answer) == bool(eq.correct_answer):
+                    total_score += eq.points
 
             elif eq.question_type == "matching":
-                correct_sorted = sorted(eq.correct_answer, key=lambda x: x["match_key"])
-                answer_sorted = sorted(ans, key=lambda x: x.get("match_key", ""))
-                eq.is_correct = (correct_sorted == answer_sorted)
-                max_score += float(eq.points)
-                if eq.is_correct:
-                    total_score += float(eq.points)
+                # هتقارن القايمة كلها (ممكن تطور حسب الشكل اللي عندك)
+                if student_answer == eq.correct_answer:
+                    total_score += eq.points
 
             elif eq.question_type == "reading":
-                correct_answers = [q["correct_answer"] for q in eq.correct_answer]
-                student_answers = [a.get("answer") for a in ans]
+                # لو عندك structure معقد لازم تقارن كل سؤال داخلي
+                if student_answer == eq.correct_answer:
+                    total_score += eq.points
 
-                correct_count = 0
-                for ca, sa in zip(correct_answers, student_answers):
-                    if sa == ca:
-                        correct_count += 1
-
-                eq.is_correct = (correct_count == len(correct_answers))
-                total_score += correct_count
-                max_score += len(correct_answers)
-
-            eq.save()
-
-        exam.score = total_score
-        exam.is_finished = True
-        exam.save()
-
-        percentage = round((total_score / max_score) * 100, 2) if max_score > 0 else 0
+        percentage = (total_score / max_score) * 100 if max_score > 0 else 0
 
         return Response({
-            "grade": total_score,
+            "exam_id": exam.id,
+            "student": request.user.email,
+            "score": total_score,
             "max_score": max_score,
-            "percentage": percentage
+            "percentage": round(percentage, 2)
         }, status=status.HTTP_200_OK)
