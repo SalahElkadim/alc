@@ -13,7 +13,8 @@ class SingleDeviceMiddleware(MiddlewareMixin):
     
     def process_request(self, request):
         # تجاهل بعض المسارات
-        excluded_paths = ['/users/login/', '/users/register/', '/admin/','/users/logout/','/users/change-password/']
+        excluded_paths = ['/users/login/', '/users/register/', '/admin/','/users/logout/','/users/change-password/','/token/refresh/'
+]
         if any(request.path.startswith(path) for path in excluded_paths):
             return None
         
