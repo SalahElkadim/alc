@@ -2,6 +2,10 @@ from datetime import timedelta
 from pathlib import Path
 import os
 import dj_database_url
+from decouple import config, Csv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,18 +15,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3#-m1uyln4jei7me&3=*+ued3w403@(72wxzg#$2@o_s@so_7l'
+SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    'alc-production-9985.up.railway.app'
-]
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
 CSRF_TRUSTED_ORIGINS = [
-    "https://alc-production-9985.up.railway.app",
+    f"https://{host}" for host in ALLOWED_HOSTS if "railway.app" in host
+] + [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
@@ -55,8 +56,8 @@ REST_FRAMEWORK = {
 }
 # إعدادات JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=config("ACCESS_TOKEN_LIFETIME", cast=int, default=1)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=config("REFRESH_TOKEN_LIFETIME", cast=int, default=7)),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
@@ -124,12 +125,10 @@ CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
     'default': dj_database_url.parse(
-        'postgresql://postgres:tHTpzmhrKmjpBODZffagOQKAVwzBYLBE@hopper.proxy.rlwy.net:17588/railway', 
-         conn_max_age=600,
-         engine='django.db.backends.postgresql_psycopg2'
-         )
-        
-    
+        config("DATABASE_URL"),
+        conn_max_age=600,
+        engine='django.db.backends.postgresql_psycopg2'
+    )
 }
 
 # Password validation
@@ -182,9 +181,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'sm249481@gmail.com'
-EMAIL_HOST_PASSWORD = 'lptj jnta uqln rbsw'
-DEFAULT_FROM_EMAIL = 'sm249481@gmail.com'
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 # Logging
 LOGGING = {
