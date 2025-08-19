@@ -20,10 +20,9 @@ SECRET_KEY = config("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
+ALLOWED_HOSTS = ["alc-production-9985.up.railway.app", "localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{host}" for host in ALLOWED_HOSTS if "railway.app" in host
-] + [
+    "https://alc-production-9985.up.railway.app",
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
