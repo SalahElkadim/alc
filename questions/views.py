@@ -28,8 +28,12 @@ class BookView(APIView):
     """
     List all books or create a new book
     """
-    permission_classes = [permissions.IsAdminUser]
     authentication_classes = [JWTAuthentication]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]  # مفتوح للجميع
+        return [permissions.IsAdminUser()]   # POST للأدمن فقط
+    
     def get(self, request):
         books = Book.objects.all()
         serializer = BookSerializer(books, many=True)
