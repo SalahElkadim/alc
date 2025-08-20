@@ -114,37 +114,44 @@ class SubmitExamAPIView(APIView):
 
         for eq in exam.exam_questions.all():
             max_score += eq.points
-            student_answer = answers.get(str(eq.question_id))
- # لازم تبقى string عشان JSON
+            student_answer = answers.get(str(eq.question_id))  # لازم تبقى string عشان JSON
 
             if student_answer is None:
                 continue  # الطالب ماجاوبش السؤال
 
-            # مقارنة الإجابة حسب نوع السؤال
+            # MCQ
             if eq.question_type == "mcq":
                 if str(student_answer).strip() == str(eq.correct_answer).strip():
                     total_score += eq.points
 
+            # True/False
             elif eq.question_type == "truefalse":
                 if bool(student_answer) == bool(eq.correct_answer):
                     total_score += eq.points
 
-            elif eq.question_type == "matching":
-                # هتقارن القايمة كلها (ممكن تطور حسب الشكل اللي عندك)
-                if student_answer == eq.correct_answer:
-                    total_score += eq.points
+            # Matching & Reading (جزئي)
+            elif eq.question_type in ["matching", "reading"]:
+                if isinstance(student_answer, dict) and isinstance(eq.correct_answer, dict):
+                    correct_items = eq.correct_answer
+                    student_items = student_answer
 
-            elif eq.question_type == "reading":
-                # لو عندك structure معقد لازم تقارن كل سؤال داخلي
-                if student_answer == eq.correct_answer:
-                    total_score += eq.points
+                    # درجة لكل عنصر فرعي
+                    per_item_score = eq.points / len(correct_items) if len(correct_items) > 0 else 0
+
+                    for key, value in correct_items.items():
+                        if key in student_items and str(student_items[key]).strip() == str(value).strip():
+                            total_score += per_item_score
+                else:
+                    # fallback: يقارن زي الأول (كامل)
+                    if student_answer == eq.correct_answer:
+                        total_score += eq.points
 
         percentage = (total_score / max_score) * 100 if max_score > 0 else 0
 
         return Response({
             "exam_id": exam.id,
             "student": request.user.email,
-            "score": total_score,
+            "score": round(total_score, 2),
             "max_score": max_score,
             "percentage": round(percentage, 2)
         }, status=status.HTTP_200_OK)
