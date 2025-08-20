@@ -1,6 +1,7 @@
 from django.db import models
 from questions.models import Book
 from users.models import CustomUser
+import uuid
 
 class Exam(models.Model):
     student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="exams")
@@ -24,7 +25,7 @@ class ExamQuestion(models.Model):
         ('truefalse', 'True/False'),
         ('reading', 'Reading Comprehension'),
     ]
-
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)  # <-- الجديد
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="exam_questions")
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     question_id = models.PositiveIntegerField()  # ID في الجدول الأصلي (MCQ, Matching, إلخ)

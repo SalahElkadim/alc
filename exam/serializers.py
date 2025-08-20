@@ -1,15 +1,20 @@
 from rest_framework import serializers
 from .models import Exam, ExamQuestion
-from questions.models import MCQQuestion, MCQChoice, MatchingQuestion, MatchingPair, TrueFalseQuestion, ReadingComprehension
-from questions.serializers import MCQQuestionSerializer, MatchingQuestionSerializer, TrueFalseQuestionSerializer, ReadingComprehensionSerializer
+from questions.models import (
+    MCQQuestion, MatchingQuestion, TrueFalseQuestion, ReadingComprehension
+)
+from questions.serializers import (
+    MCQQuestionSerializer, MatchingQuestionSerializer,
+    TrueFalseQuestionSerializer, ReadingComprehensionSerializer
+)
+import random
+
 
 class ExamQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamQuestion
-        fields = "__all__"
+        fields = ["public_id", "question_type", "question_text"]  # نخلي الـ frontend يشوف public_id فقط
 
-
-import random
 
 class ExamSerializer(serializers.ModelSerializer):
     exam_questions = serializers.SerializerMethodField()
@@ -21,34 +26,37 @@ class ExamSerializer(serializers.ModelSerializer):
     def get_exam_questions(self, obj):
         result = []
         for eq in obj.exam_questions.all():
+            question_data = None
+
             if eq.question_type == "mcq":
                 question = MCQQuestion.objects.get(id=eq.question_id)
-                result.append(MCQQuestionSerializer(question).data)
+                question_data = MCQQuestionSerializer(question).data
 
             elif eq.question_type == "matching":
                 question = MatchingQuestion.objects.get(id=eq.question_id)
                 data = MatchingQuestionSerializer(question).data
-
-                # عمل نسخة علشان منلخبطش الـ model الأصلي
                 shuffled_data = data.copy()
                 matching_pairs = shuffled_data.get("matching_pairs", [])
 
-                # لو الشكل الجديد اللي فيه left_item / right_item
+                # شفل القوائم بحيث الطالب مايعرفش الترتيب الأصلي
                 if matching_pairs and isinstance(matching_pairs, list):
-                    # عمل شفل لكل ليست لوحدها
                     for pair in matching_pairs:
                         for key, value in pair.items():
                             if isinstance(value, list):
                                 random.shuffle(value)
-
-                result.append(shuffled_data)
+                question_data = shuffled_data
 
             elif eq.question_type == "truefalse":
                 question = TrueFalseQuestion.objects.get(id=eq.question_id)
-                result.append(TrueFalseQuestionSerializer(question).data)
+                question_data = TrueFalseQuestionSerializer(question).data
 
             elif eq.question_type == "reading":
                 question = ReadingComprehension.objects.get(id=eq.question_id)
-                result.append(ReadingComprehensionSerializer(question).data)
+                question_data = ReadingComprehensionSerializer(question).data
+
+            if question_data:
+                # نضيف public_id عشان الفرونت يجاوب بيه
+                question_data["public_id"] = str(eq.public_id)
+                result.append(question_data)
 
         return result
