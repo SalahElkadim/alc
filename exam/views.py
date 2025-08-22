@@ -25,7 +25,7 @@ class GenerateExamAPIView(APIView):
         difficulty = request.data.get("difficulty")
 
         if not book_id or not difficulty:
-            return Response({"error": "book and difficulty are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error_message": "book and difficulty are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             try:
@@ -46,7 +46,7 @@ class GenerateExamAPIView(APIView):
                 if len(mcqs) < required_count or len(matches) < required_count or \
                    len(tfs) < required_count or len(readings) < required_count:
                     return Response({
-                        "error": "عدد الأسئلة غير كافي لإنشاء الامتحان",
+                        "error_message": "عدد الأسئلة غير كافي لإنشاء الامتحان",
                         "available": {
                             "mcqs": len(mcqs),
                             "matches": len(matches),
@@ -143,7 +143,7 @@ class GenerateExamAPIView(APIView):
                 
             except Exception as e:
                 return Response({
-                    "error": f"خطأ في إنشاء الامتحان: {str(e)}"
+                    "error_message": f"خطأ في إنشاء الامتحان: {str(e)}"
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -160,13 +160,13 @@ class SubmitExamAPIView(APIView):
             if not exam_id:
                 return Response({
                     "success": False,
-                    "message": "exam_id مطلوب"
+                    "error_message": "exam_id مطلوب"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             if not answers or not isinstance(answers, list):
                 return Response({
                     "success": False,
-                    "message": "answers مطلوبة ويجب أن تكون قائمة"
+                    "error_message": "answers مطلوبة ويجب أن تكون قائمة"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # جلب الامتحان والتحقق من صحته
@@ -175,14 +175,14 @@ class SubmitExamAPIView(APIView):
             except Exam.DoesNotExist:
                 return Response({
                     "success": False,
-                    "message": "الامتحان غير موجود أو غير مخصص لك"
+                    "error_message": "الامتحان غير موجود أو غير مخصص لك"
                 }, status=status.HTTP_404_NOT_FOUND)
 
             # التحقق من أن الامتحان لم ينته بعد
             if exam.is_finished:
                 return Response({
                     "success": False,
-                    "message": "تم تقديم هذا الامتحان مسبقاً"
+                    "error_message": "تم تقديم هذا الامتحان مسبقاً"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # جلب جميع أسئلة الامتحان
@@ -191,7 +191,7 @@ class SubmitExamAPIView(APIView):
             if not exam_questions.exists():
                 return Response({
                     "success": False,
-                    "message": "لا توجد أسئلة في هذا الامتحان"
+                    "error_message": "لا توجد أسئلة في هذا الامتحان"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # معالجة الإجابات وحساب الدرجات
@@ -295,7 +295,7 @@ class SubmitExamAPIView(APIView):
                             "is_correct": False,
                             "points_earned": 0,
                             "points_possible": float(possible_points),
-                            "message": "لم يتم الإجابة على هذا السؤال"
+                            "error_message": "لم يتم الإجابة على هذا السؤال"
                         })
                     
                     detailed_results.append(question_result)
@@ -333,7 +333,7 @@ class SubmitExamAPIView(APIView):
         except Exception as e:
             return Response({
                 "success": False,
-                "message": f"خطأ في معالجة الامتحان: {str(e)}"
+                "error_message": f"خطأ في معالجة الامتحان: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _grade_mcq(self, exam_question, student_answer):
