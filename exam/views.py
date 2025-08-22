@@ -163,11 +163,12 @@ class SubmitExamAPIView(APIView):
                     "error_message": "exam_id مطلوب"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            if not answers or not isinstance(answers, list):
+            if not isinstance(answers, list):
                 return Response({
                     "success": False,
-                    "error_message": "answers مطلوبة ويجب أن تكون قائمة"
+                    "error_message": "answers يجب أن تكون قائمة"
                 }, status=status.HTTP_400_BAD_REQUEST)
+
 
             # جلب الامتحان والتحقق من صحته
             try:
