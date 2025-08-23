@@ -430,45 +430,68 @@ class SubmitExamAPIView(APIView):
 
         total_sub_questions = len(reading_questions)
         
-        if not student_answer or not isinstance(student_answer, list):
+        # التحقق من وجود إجابة الطالب
+        if not student_answer:
             exam_question.is_correct = False
             return Decimal('0'), Decimal(str(total_sub_questions))
-
-        # تحويل أسئلة القراءة إلى قاموس للوصول السريع
-        correct_answers = {}
-        for i, q_data in enumerate(reading_questions):
-            if isinstance(q_data, dict) and 'question' in q_data and 'correct_answer' in q_data:
-                question_text = str(q_data['question']).strip().lower()
-                correct_answer = str(q_data['correct_answer']).strip().lower()
-                # استخدم الفهرس كمفتاح احتياطي إذا كانت الأسئلة متشابهة
-                key = f"{question_text}_{i}"
-                correct_answers[key] = correct_answer
-                # أضف المفتاح بدون فهرس أيضاً
-                if question_text not in correct_answers:
-                    correct_answers[question_text] = correct_answer
 
         # حساب النقاط
         correct_count = 0
         
-        for i, student_q in enumerate(student_answer):
-            if isinstance(student_q, dict) and 'question' in student_q and 'answer' in student_q:
-                question_text = str(student_q['question']).strip().lower()
-                student_ans = str(student_q['answer']).strip().lower()
-
-                # جرب البحث بالفهرس أولاً، ثم بدونه
-                key_with_index = f"{question_text}_{i}"
-                
-                if key_with_index in correct_answers:
-                    if correct_answers[key_with_index] == student_ans:
-                        correct_count += 1
-                elif question_text in correct_answers:
-                    if correct_answers[question_text] == student_ans:
-                        correct_count += 1
-
-        # حفظ النتيجة
-        exam_question.is_correct = (correct_count == total_sub_questions)
+        # إذا كانت إجابة الطالب عبارة عن نص واحد (الحالة الحالية)
+        if isinstance(student_answer, str):
+            # نفترض أن هناك سؤال واحد فقط في أسئلة القراءة
+            if len(reading_questions) == 1:
+                q_data = reading_questions[0]
+                if isinstance(q_data, dict) and 'correct_answer' in q_data:
+                    correct_answer = str(q_data['correct_answer']).strip().lower()
+                    student_ans = str(student_answer).strip().lower()
+                    
+                    if correct_answer == student_ans:
+                        correct_count = 1
+            
+            # حفظ النتيجة
+            exam_question.is_correct = (correct_count == total_sub_questions)
+            return Decimal(str(correct_count)), Decimal(str(total_sub_questions))
         
-        return Decimal(str(correct_count)), Decimal(str(total_sub_questions))
+        # إذا كانت إجابة الطالب عبارة عن list (للمستقبل)
+        elif isinstance(student_answer, list):
+            # تحويل أسئلة القراءة إلى قاموس للوصول السريع
+            correct_answers = {}
+            for i, q_data in enumerate(reading_questions):
+                if isinstance(q_data, dict) and 'question' in q_data and 'correct_answer' in q_data:
+                    question_text = str(q_data['question']).strip().lower()
+                    correct_answer = str(q_data['correct_answer']).strip().lower()
+                    # استخدم الفهرس كمفتاح احتياطي إذا كانت الأسئلة متشابهة
+                    key = f"{question_text}_{i}"
+                    correct_answers[key] = correct_answer
+                    # أضف المفتاح بدون فهرس أيضاً
+                    if question_text not in correct_answers:
+                        correct_answers[question_text] = correct_answer
+            
+            for i, student_q in enumerate(student_answer):
+                if isinstance(student_q, dict) and 'question' in student_q and 'answer' in student_q:
+                    question_text = str(student_q['question']).strip().lower()
+                    student_ans = str(student_q['answer']).strip().lower()
+
+                    # جرب البحث بالفهرس أولاً، ثم بدونه
+                    key_with_index = f"{question_text}_{i}"
+                    
+                    if key_with_index in correct_answers:
+                        if correct_answers[key_with_index] == student_ans:
+                            correct_count += 1
+                    elif question_text in correct_answers:
+                        if correct_answers[question_text] == student_ans:
+                            correct_count += 1
+
+            # حفظ النتيجة
+            exam_question.is_correct = (correct_count == total_sub_questions)
+            return Decimal(str(correct_count)), Decimal(str(total_sub_questions))
+        
+        # حالة أخرى غير متوقعة
+        else:
+            exam_question.is_correct = False
+            return Decimal('0'), Decimal(str(total_sub_questions))
 
     def _get_letter_grade(self, percentage):
         """تحديد التقدير بناء على النسبة المئوية"""
