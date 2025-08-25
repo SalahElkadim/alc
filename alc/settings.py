@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=False, cast=bool)
+DEBUG = True
 
 ALLOWED_HOSTS = ["alc-production-9985.up.railway.app", "localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = [
@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'questions',
-    'exam'
+    'exam',
+    'payments',
 
 ]
 REST_FRAMEWORK = {
@@ -224,3 +225,7 @@ class Command(BaseCommand):
         
         self.stdout.write(f'Cleaned {count} expired sessions')
 
+
+MOYASAR_API_KEY = config('MOYASAR_API_KEY')
+MOYASAR_PUBLISHABLE_KEY = config('MOYASAR_PUBLISHABLE_KEY')
+MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"

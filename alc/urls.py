@@ -7,5 +7,6 @@ urlpatterns = [
     path('users/',include('users.urls')),
     path('questions/',include('questions.urls')),
     path('exam/',include('exam.urls')),
+    path('api/',include('payments.urls')),
 
 ]
