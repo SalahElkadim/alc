@@ -5,7 +5,6 @@ from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
-
 class MoyasarService:
     @staticmethod
     def create_payment(amount, description, customer_data=None):
