@@ -197,20 +197,15 @@ class ForgotPasswordView(APIView):
             #reset_link = f"http://127.0.0.1:8000/users/reset-password-confirm/{uidb64}/{token}/"
 
             print("📧 Attempting to send email...")
-            try:
-                send_mail(
+            send_mail(
                     subject='Password Reset',
                     message=f'Click the link below to reset your password:\n{reset_link}',
                     from_email= settings.DEFAULT_FROM_EMAIL,
                     recipient_list = [email],
                     fail_silently=False,
                 )
-                print("✅ Email sent successfully")
-                return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},
-                                status=status.HTTP_200_OK)
-            except Exception:
-                return Response({"error_message": "فشل إرسال البريد الإلكتروني."},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},status=status.HTTP_200_OK)
+
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
