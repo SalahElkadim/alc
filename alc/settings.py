@@ -179,17 +179,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
+EMAIL_PORT = 465
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 
-# إعدادات إضافية للأمان
-EMAIL_USE_SSL = False  # لا تستخدم SSL مع TLS
-EMAIL_SSL_CERTFILE = None
-EMAIL_SSL_KEYFILE = None
+
 
 SESSION_EXPIRE_SECONDS = 24 * 60 * 60  # 24 ساعة
 from django.core.management import BaseCommand
