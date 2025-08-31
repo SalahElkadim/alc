@@ -14,6 +14,8 @@ from .utils import generate_device_fingerprint
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,11 @@ class LoginView(APIView):
             
             # الحصول على JWT token من الـ serializer
             access_token = serializer.validated_data['tokens']['access']
+
+            from rest_framework_simplejwt.authentication import JWTAuthentication
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(access_token)
+            session_key = validated_token['jti']
             
             # إلغاء الجلسات السابقة للطلاب فقط
             if not user.allows_multiple_devices():
@@ -71,7 +78,7 @@ class LoginView(APIView):
             # إنشاء جلسة جديدة
             UserSession.objects.create(
                 user=user,
-                session_key=access_token,
+                session_key= session_key,
                 device_fingerprint=device_fingerprint,
                 ip_address=ip_address,
                 user_agent=user_agent,
@@ -280,3 +287,24 @@ class ActiveSessionsView(APIView):
         except UserSession.DoesNotExist:
             return Response({"error_message": "Session not found."},
                             status=status.HTTP_404_NOT_FOUND)
+
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200 and "access" in response.data:
+            access_token = response.data["access"]
+
+            # استخراج ال jti + user من التوكن الجديد
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(access_token)
+            jti = validated_token["jti"]
+            user = jwt_auth.get_user(validated_token)
+
+            # تحديث آخر جلسة نشطة للمستخدم بال jti الجديد
+            session = UserSession.objects.filter(user=user, is_active=True).last()
+            if session:
+                session.session_key = jti
+                session.last_activity = timezone.now()
+                session.save()
+
+        return response

@@ -34,11 +34,11 @@ class SingleDeviceMiddleware(MiddlewareMixin):
                 # البحث عن الجلسة
                 try:
                     session = UserSession.objects.get(
-                        user=user,
-                        session_key=session_key,
-                        device_fingerprint=device_fingerprint,
-                        is_active=True
-                    )
+                    user=user,
+                    session_key=validated_token['jti'],
+                    device_fingerprint=device_fingerprint,
+                    is_active=True
+                )
                     
                     # تحديث آخر نشاط
                     session.last_activity = timezone.now()
