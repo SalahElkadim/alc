@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["alc-production-8568.up.railway.app", "localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = [
@@ -179,11 +179,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
+EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+EMAIL_HOST_USER = "sm249481@gmail.com"
+EMAIL_HOST_PASSWORD = "lptj jnta uqln rbsw"
+DEFAULT_FROM_EMAIL = "sm249481@gmail.com"
 
 
 
