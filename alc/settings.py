@@ -185,25 +185,7 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
-# Logging
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'auth.log',
-        },
-    },
-    'loggers': {
-        'your_app_name.views': {  # استبدل your_app_name باسم التطبيق
-            'handlers': ['file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-    },
-}
+
 
 SESSION_EXPIRE_SECONDS = 24 * 60 * 60  # 24 ساعة
 from django.core.management import BaseCommand

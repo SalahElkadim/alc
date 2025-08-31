@@ -199,10 +199,10 @@ class ForgotPasswordView(APIView):
 
             try:
                 send_mail(
-                    'Password Reset',
-                    f'Click the link below to reset your password:\n{reset_link}',
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
+                    subject='Password Reset',
+                    message=f'Click the link below to reset your password:\n{reset_link}',
+                    from_email= settings.DEFAULT_FROM_EMAIL,
+                    recipient_list = [email],
                     fail_silently=False,
                 )
                 return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},
