@@ -196,7 +196,7 @@ class ForgotPasswordView(APIView):
             reset_link = f"https://alcreactapp-production.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
             #reset_link = f"http://127.0.0.1:8000/users/reset-password-confirm/{uidb64}/{token}/"
 
-
+            print("📧 Attempting to send email...")
             try:
                 send_mail(
                     subject='Password Reset',
@@ -205,6 +205,7 @@ class ForgotPasswordView(APIView):
                     recipient_list = [email],
                     fail_silently=False,
                 )
+                print("✅ Email sent successfully")
                 return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},
                                 status=status.HTTP_200_OK)
             except Exception:
