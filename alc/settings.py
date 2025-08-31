@@ -186,6 +186,10 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 
+# إعدادات إضافية للأمان
+EMAIL_USE_SSL = False  # لا تستخدم SSL مع TLS
+EMAIL_SSL_CERTFILE = None
+EMAIL_SSL_KEYFILE = None
 
 SESSION_EXPIRE_SECONDS = 24 * 60 * 60  # 24 ساعة
 from django.core.management import BaseCommand
