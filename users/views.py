@@ -201,7 +201,7 @@ class ForgotPasswordView(APIView):
                     subject='Password Reset',
                     message= 'hello',
                     #message=f'Click the link below to reset your password:\n{reset_link}',
-                    from_email= settings.DEFAULT_FROM_EMAIL,
+                    from_email= 'salah.mohamed.elkadim@gmail.com',
                     recipient_list = ['sm249481@gmail.com'],
                     
                 )
