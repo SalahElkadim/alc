@@ -6,6 +6,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 class MoyasarService:
+    authentication_classes = []
+    permission_classes = []
     @staticmethod
     def create_payment(amount, description, customer_data=None):
         """

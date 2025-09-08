@@ -84,8 +84,8 @@ class CreatePaymentView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PaymentStatusView(APIView):
-    authentication_classes = []
-    permission_classes = []
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     def get(self, request, payment_id):
         payment = get_object_or_404(Payment, id=payment_id)
         
@@ -98,19 +98,19 @@ class PaymentStatusView(APIView):
             payment.status = moyasar_data['status']
             
             if payment.status == 'paid' and old_status != 'paid':
-                payment.paid_at = timezone.now()
-            
+                payment.paid_at = timezone.now()          
             payment.save()
         
         serializer = PaymentStatusSerializer(payment)
         return Response({
             'success': True,
-            'payment': serializer.data
+            'payment': serializer.data,
+            
         })
 
 class PaymentCallbackView(APIView):
-    authentication_classes = []
-    permission_classes = []
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         """
         Webhook من Moyasar عند تغيير حالة الدفع
@@ -127,8 +127,7 @@ class PaymentCallbackView(APIView):
             payment.status = payment_data.get('status', payment.status)
             
             if payment.status == 'paid' and old_status != 'paid':
-                payment.paid_at = timezone.now()
-            
+                payment.paid_at = timezone.now()          
             payment.save()
             
             return Response({'success': True})
@@ -140,8 +139,8 @@ class PaymentCallbackView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
 class PaymentListView(APIView):
-    authentication_classes = []
-    permission_classes = []
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         payments = Payment.objects.all().order_by('-created_at')
         serializer = PaymentStatusSerializer(payments, many=True)
@@ -158,8 +157,8 @@ import base64
 import json
 
 class TestMoyasarView(APIView):
-    authentication_classes = []
-    permission_classes = []
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         """
         اختبار Moyasar API مع Credit Card

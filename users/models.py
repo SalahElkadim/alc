@@ -45,7 +45,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)  # جديد
     failed_login_attempts = models.IntegerField(default=0)  # جديد
     account_locked_until = models.DateTimeField(null=True, blank=True)  # جديد
-
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
