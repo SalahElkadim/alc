@@ -14,16 +14,24 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 import uuid
 from django.utils import timezone
 
-# انشاء عملية دفع
+
 class CreatePaymentView(APIView):
     def post(self, request):
         user = request.user  # ناخد اليوزر الحالي
         data = request.data
+
+        source_data = data.get("source", {})  # هنسحب كل البيانات من source
+        source = {
+            "type": source_data.get("type"),
+            "name": source_data.get("name"),
+        }
+
         payment_response = create_payment(
             given_id=request.user.id,
             amount=data.get("amount"),
             description=data.get("description"),
             callback_url=data.get("callback_url"),
+            source=source,
             metadata=data.get("metadata")
         )
 
@@ -43,7 +51,7 @@ class CreatePaymentView(APIView):
         })
 
 
-# نجيب عملية الدفع بالاي دي بتاعها
+
 @api_view(["GET"])
 def fetch_payment_view(request, moyasar_id):
     data, status_code = fetch_payment_api(moyasar_id)
@@ -64,8 +72,7 @@ def fetch_payment_view(request, moyasar_id):
         })
     else:
         return Response({"error": data}, status=status_code)
-
-# نعرض كل عمليات الدفع
+    
 class ListPaymentsView(APIView):
     """
     API endpoint to list all payments
@@ -74,7 +81,6 @@ class ListPaymentsView(APIView):
         data = list_payments()
         return Response(data)
 
-# نعمل ريفند للفلوس
 @api_view(["POST"])
 def refund_payment_view(request, moyasar_id):
     """
@@ -86,7 +92,7 @@ def refund_payment_view(request, moyasar_id):
 
 
 
-# ميسر يعمل بوست ريكويست يقولنا فيه الدفع تمام 
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
@@ -122,7 +128,7 @@ def payment_callback_view(request):
 
     return Response({"success": True, "payment": PaymentSerializer(payment).data})
 
-# تفاصيل الفاتورة
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def invoice_detail_view(request, moyasar_id):
@@ -136,7 +142,7 @@ def invoice_detail_view(request, moyasar_id):
     except Invoice.DoesNotExist:
         return Response({"error": "Invoice not found"}, status=404)
     
-# كل الفواتير
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def all_invoices_view(request):

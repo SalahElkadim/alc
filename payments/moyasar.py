@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 import json
 
-def create_payment(given_id, amount, currency="SAR", description=None, callback_url=None, metadata=None):
+def create_payment(given_id, amount, currency="SAR", description=None, callback_url=None, source=None, metadata=None):
     url = "https://api.moyasar.com/v1/payments"
     headers = {
         "Content-Type": "application/json",
@@ -15,6 +15,7 @@ def create_payment(given_id, amount, currency="SAR", description=None, callback_
         "currency": currency,
         "description": description,
         "callback_url": callback_url,
+        "source": source,
         "metadata": metadata,
         "apply_coupon": True
     }
