@@ -24,6 +24,13 @@ class CreatePaymentView(APIView):
         source = {
             "type": source_data.get("type"),
             "name": source_data.get("name"),
+            "number": source_data.get("number"),
+            "month": source_data.get("month"),
+            "year": source_data.get("year"),
+            "cvc": source_data.get("cvc"),
+            "3ds": True,
+            "manual": False,
+            "save_card": False
         }
 
         payment_response = create_payment(
