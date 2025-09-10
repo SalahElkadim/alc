@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'exam',
     'payments',
 
+
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -208,7 +209,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Cleaned {count} expired sessions')
 
 
-MOYASAR_API_KEY = config('MOYASAR_API_KEY')
+MOYASAR_SECRET_KEY = config('MOYASAR_SECRET_KEY')
 MOYASAR_PUBLISHABLE_KEY = config('MOYASAR_PUBLISHABLE_KEY')
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
 

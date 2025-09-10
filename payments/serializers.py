@@ -1,25 +1,23 @@
 from rest_framework import serializers
-from .models import Payment
+from .models import Payment,Invoice
 
-class CreatePaymentSerializer(serializers.Serializer):
-    amount = serializers.IntegerField(min_value=100)  # أقل مبلغ 1 ريال
-    description = serializers.CharField(max_length=500)
-    customer_name = serializers.CharField(max_length=100, required=False)
-    customer_email = serializers.EmailField(required=False)
-    customer_phone = serializers.CharField(max_length=20, required=False)
-    
-    def validate_amount(self, value):
-        if value < 100:  # أقل من ريال واحد
-            raise serializers.ValidationError("المبلغ يجب أن يكون على الأقل 1 ريال (100 هللة)")
-        return value
 
-class PaymentStatusSerializer(serializers.ModelSerializer):
-    amount_in_riyals = serializers.ReadOnlyField()
-    
+class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
+        fields = "__all__"
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
         fields = [
-            'id', 'moyasar_payment_id', 'amount', 'amount_in_riyals',
-            'currency', 'description', 'status', 'customer_name',
-            'customer_email', 'customer_phone', 'created_at', 'paid_at'
+            'invoice_number',
+            'payment',
+            'amount',
+            'currency',
+            'description',
+            'created_at',
+            'paid_at'
         ]
+        read_only_fields = ['invoice_number', 'created_at', 'paid_at', 'payment']

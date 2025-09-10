@@ -1,16 +1,13 @@
 from django.urls import path
-from .views import (
-    CreatePaymentView,
-    PaymentStatusView,
-    PaymentCallbackView,
-    PaymentListView,TestMoyasarView
-)
+from .views import CreatePaymentView, fetch_payment_view,ListPaymentsView,refund_payment_view,payment_callback_view,invoice_detail_view,all_invoices_view
 
 urlpatterns = [
-    path('create-payment/', CreatePaymentView.as_view(), name='create_payment'),
-    path('payment-status/<int:payment_id>/', PaymentStatusView.as_view(), name='payment_status'),
-    path('callback/', PaymentCallbackView.as_view(), name='payment_callback'),
-    path('payments/', PaymentListView.as_view(), name='payment_list'),
-    path('test-moyasar/', TestMoyasarView.as_view(), name='test_moyasar'),
+    path("create/", CreatePaymentView.as_view(), name="create-payment"),
+    path('fetch/<str:moyasar_id>/', fetch_payment_view, name='fetch-payment'),
+    path('list/', ListPaymentsView.as_view(), name='list-payments'),
+    path("refund/<str:moyasar_id>/", refund_payment_view, name="refund-payment"),  
+    path('callback/', payment_callback_view, name='payment-callback'),
+    path('invoice/<str:moyasar_id>/', invoice_detail_view, name='invoice-detail'),
+    path('invoices/', all_invoices_view, name='all-invoices'),
 
 ]
