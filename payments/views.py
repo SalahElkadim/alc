@@ -172,33 +172,16 @@ def all_invoices_view(request):
     serializer = InvoiceSerializer(invoices, many=True)
     return Response(serializer.data)
 
-def payment_success_view(request):
-    payment_id = request.GET.get('payment_id')
-    moyasar_id = request.GET.get('id')
-    
-    payment = None
-    invoice = None
-    
-    try:
-        if moyasar_id:
-            payment = Payment.objects.get(moyasar_id=moyasar_id)
-        elif payment_id:
-            payment = get_object_or_404(Payment, id=payment_id)
-        
-        if payment:
-            try:
-                invoice = Invoice.objects.get(payment=payment)
-            except Invoice.DoesNotExist:
-                invoice = None
-                
-    except Payment.DoesNotExist:
-        raise Http404("Payment not found")
-    
-    context = {
-        'payment': payment,
-        'invoice': invoice,
-        'success': True,
-    }
-    
-    return render(request, 'payments/success.html', context)
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def payment_redirect_view(request):
+    status = request.GET.get("status")
+    payment_id = request.GET.get("id")
+
+    if status == "paid":
+        # ممكن ترندر صفحة نجاح
+        return Response({"message": "✅ Payment Successful", "id": payment_id})
+    else:
+        # ممكن ترندر صفحة فشل
+        return Response({"message": "❌ Payment Failed", "id": payment_id})
 

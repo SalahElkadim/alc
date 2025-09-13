@@ -15,14 +15,14 @@ def create_payment(given_id, amount, currency="SAR", description=None, callback_
         "currency": currency,
         "description": description,
         "callback_url": "https://alc-production-8568.up.railway.app/payments/callback/",
-        "success_url": "https://alc-production-8568.up.railway.app/payment/success/",
+        "redirect_url": "https://alc-production-8568.up.railway.app/payments/redirect/",
         "source": source,
         "metadata": metadata,
         "apply_coupon": True
     }
 
     
-
+    
     response = requests.post(
         url,
         auth=(settings.MOYASAR_SECRET_KEY, ""),  # Basic Auth: key + empty password
