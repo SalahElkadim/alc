@@ -38,3 +38,5 @@ class ExamQuestion(models.Model):
     def check_answer(self):
         self.is_correct = (self.student_answer == self.correct_answer)
         return self.is_correct
+
+# model , exam , date , 

@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .moyasar import create_payment
@@ -13,6 +13,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny,IsAuthenticated
 import uuid
 from django.utils import timezone
+from django.http import Http404
 
 
 class CreatePaymentView(APIView):
@@ -37,7 +38,7 @@ class CreatePaymentView(APIView):
             given_id=request.user.id,
             amount=data.get("amount"),
             description=data.get("description"),
-            callback_url=data.get("callback_url"),
+            #callback_url=data.get("callback_url"),
             source=source,
             metadata=data.get("metadata")
         )
@@ -99,7 +100,6 @@ def refund_payment_view(request, moyasar_id):
 
 
 
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
@@ -108,32 +108,44 @@ def payment_callback_view(request):
     moyasar_id = data.get("id")
     status = data.get("status")
     amount = data.get("amount")
+    currency = data.get("currency")
 
     if not moyasar_id:
         return Response({"error": "Missing payment ID"}, status=400)
 
     try:
         payment = Payment.objects.get(moyasar_id=moyasar_id)
+
+        # تأكد أن المبلغ متطابق
+        if payment.amount != amount:
+            return Response({"error": "Amount mismatch"}, status=400)
+
+        # تحديث بيانات الدفع
         payment.status = status
         payment.amount = amount
+        payment.currency = currency or payment.currency
         payment.save()
 
+        # لو الدفع ناجح → إنشاء فاتورة
         if status == "paid":
             invoice, created = Invoice.objects.get_or_create(
                 payment=payment,
                 defaults={
                     "invoice_number": str(uuid.uuid4()),
                     "amount": amount,
-                    "currency": getattr(payment, "currency", "SAR"),
-                    "description": getattr(payment, "description", ""),
-                    "paid_at": timezone.now()
+                    "currency": currency or "SAR",
+                    "description": payment.description,
+                    "paid_at": timezone.now(),
                 }
             )
 
     except Payment.DoesNotExist:
         return Response({"error": "Payment not found"}, status=404)
 
-    return Response({"success": True, "payment": PaymentSerializer(payment).data})
+    return Response({
+        "success": True,
+        "payment": PaymentSerializer(payment).data
+    })
 
 
 @api_view(["GET"])
@@ -159,3 +171,34 @@ def all_invoices_view(request):
     invoices = Invoice.objects.all().order_by('-created_at')  # ترتيب من الأحدث للأقدم
     serializer = InvoiceSerializer(invoices, many=True)
     return Response(serializer.data)
+
+def payment_success_view(request):
+    payment_id = request.GET.get('payment_id')
+    moyasar_id = request.GET.get('id')
+    
+    payment = None
+    invoice = None
+    
+    try:
+        if moyasar_id:
+            payment = Payment.objects.get(moyasar_id=moyasar_id)
+        elif payment_id:
+            payment = get_object_or_404(Payment, id=payment_id)
+        
+        if payment:
+            try:
+                invoice = Invoice.objects.get(payment=payment)
+            except Invoice.DoesNotExist:
+                invoice = None
+                
+    except Payment.DoesNotExist:
+        raise Http404("Payment not found")
+    
+    context = {
+        'payment': payment,
+        'invoice': invoice,
+        'success': True,
+    }
+    
+    return render(request, 'payments/success.html', context)
+
