@@ -139,7 +139,6 @@ def payment_callback_view(request):
                     "invoice_number": str(uuid.uuid4()),
                     "amount": amount,
                     "currency": currency or "SAR",
-                    "description": payment.description,
                     "paid_at": timezone.now(),
                 }
             )
