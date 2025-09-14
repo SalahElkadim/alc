@@ -101,11 +101,9 @@ def refund_payment_view(request, moyasar_id):
 
 
 from django.shortcuts import render
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
-    # 🖨️ اطبع الداتا عشان نشوفها في لوج السيرفر
     print("📩 Callback received")
     print("Headers:", dict(request.headers))
     print("Body:", request.data)
@@ -149,8 +147,22 @@ def payment_callback_view(request):
     except Payment.DoesNotExist:
         return Response({"error": "Payment not found"}, status=404)
 
-    # هنا هنبدل الـ Response ب render لصفحة template
-    if status == "paid":
+    # الكولباك يرد على البوابة فقط
+    return Response({"success": True})
+
+@permission_classes([AllowAny])
+def payment_redirect_view(request):
+    status = request.GET.get("status")
+    moyasar_id = request.GET.get("id")
+
+    try:
+        payment = Payment.objects.get(moyasar_id=moyasar_id)
+        invoice = getattr(payment, "invoice", None)
+    except Payment.DoesNotExist:
+        payment = None
+        invoice = None
+
+    if status == "paid" and payment:
         return render(request, "payments/payment_success.html", {
             "payment": payment,
             "invoice": invoice,
