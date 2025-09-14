@@ -105,6 +105,11 @@ from django.shortcuts import render
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
+    # 🖨️ اطبع الداتا عشان نشوفها في لوج السيرفر
+    print("📩 Callback received")
+    print("Headers:", dict(request.headers))
+    print("Body:", request.data)
+
     data = request.data
 
     moyasar_id = data.get("id")
@@ -154,6 +159,7 @@ def payment_callback_view(request):
         return render(request, "payments/payment_failed.html", {
             "payment": payment,
         })
+
 
 
 
