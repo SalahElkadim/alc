@@ -149,6 +149,7 @@ def payment_callback_view(request):
     # الكولباك يرد على البوابة فقط
     return Response({"success": True})
 
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def payment_redirect_view(request):
     status = request.GET.get("status")

@@ -7,7 +7,7 @@ urlpatterns = [
     path('list/', ListPaymentsView.as_view(), name='list-payments'),
     path("refund/<str:moyasar_id>/", refund_payment_view, name="refund-payment"),  
     path('callback/', payment_callback_view, name='payment-callback'),
-    path("payments/redirect/", payment_redirect_view, name="payment_redirect"),  # GET
+    path("redirect/", payment_redirect_view, name="payment_redirect"),  # GET
     path('invoice/<str:moyasar_id>/', invoice_detail_view, name='invoice-detail'),
     path('invoices/', all_invoices_view, name='all-invoices'),
     
