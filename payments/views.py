@@ -100,6 +100,8 @@ def refund_payment_view(request, moyasar_id):
 
 
 
+from django.shortcuts import render
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
@@ -142,10 +144,17 @@ def payment_callback_view(request):
     except Payment.DoesNotExist:
         return Response({"error": "Payment not found"}, status=404)
 
-    return Response({
-        "success": True,
-        "payment": PaymentSerializer(payment).data
-    })
+    # هنا هنبدل الـ Response ب render لصفحة template
+    if status == "paid":
+        return render(request, "payments/payment_success.html", {
+            "payment": payment,
+            "invoice": invoice,
+        })
+    else:
+        return render(request, "payments/payment_failed.html", {
+            "payment": payment,
+        })
+
 
 
 @api_view(["GET"])
@@ -172,16 +181,4 @@ def all_invoices_view(request):
     serializer = InvoiceSerializer(invoices, many=True)
     return Response(serializer.data)
 
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def payment_redirect_view(request):
-    status = request.GET.get("status")
-    payment_id = request.GET.get("id")
-
-    if status == "paid":
-        # ممكن ترندر صفحة نجاح
-        return Response({"message": "✅ Payment Successful", "id": payment_id})
-    else:
-        # ممكن ترندر صفحة فشل
-        return Response({"message": "❌ Payment Failed", "id": payment_id})
 
