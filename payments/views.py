@@ -5,23 +5,31 @@ from .moyasar import create_payment
 import requests
 from rest_framework.decorators import api_view
 from django.conf import settings
-from .models import Payment,Invoice
-from .serializers import PaymentSerializer,InvoiceSerializer
+from .models import Payment, Invoice
+from .serializers import PaymentSerializer, InvoiceSerializer
 from .moyasar import fetch_payment as fetch_payment_api
-from .moyasar import list_payments,refund_payment
+from .moyasar import list_payments, refund_payment
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 import uuid
 from django.utils import timezone
-from django.http import Http404
+from django.http import Http404, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+import json
+import logging
+from decimal import Decimal
+from django.db import transaction
+
+logger = logging.getLogger(__name__)
 
 
 class CreatePaymentView(APIView):
     def post(self, request):
-        user = request.user  # ناخد اليوزر الحالي
+        user = request.user
         data = request.data
 
-        source_data = data.get("source", {})  # هنسحب كل البيانات من source
+        source_data = data.get("source", {})
         source = {
             "type": source_data.get("type"),
             "name": source_data.get("name"),
@@ -38,12 +46,11 @@ class CreatePaymentView(APIView):
             given_id=request.user.id,
             amount=data.get("amount"),
             description=data.get("description"),
-            #callback_url=data.get("callback_url"),
             source=source,
             metadata=data.get("metadata")
         )
 
-        # نخزن الدفع في الداتابيز لو اتنجحت العملية
+        # نخزن الدفع في الداتابيز
         if "id" in payment_response:
             payment, created = Payment.objects.get_or_create(
                 user=user,
@@ -54,10 +61,27 @@ class CreatePaymentView(APIView):
                 }
             )
 
+            # إنشاء فاتورة مؤقتة (pending)
+            if created:
+                invoice = self.create_invoice_for_payment(payment, data.get("description"))
+                logger.info(f"Created payment {payment.moyasar_id} with invoice {invoice.invoice_number}")
+
         return Response({
             "moyasar_data": payment_response,
         })
 
+    def create_invoice_for_payment(self, payment, description=None):
+        """إنشاء فاتورة للدفعة"""
+        invoice_number = f"INV-{timezone.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
+        
+        invoice = Invoice.objects.create(
+            payment=payment,
+            invoice_number=invoice_number,
+            amount=Decimal(payment.amount) / 100,  # تحويل من هللة لريال
+            currency='SAR',
+            description=description or f"Payment for {payment.moyasar_id}",
+        )
+        return invoice
 
 
 @api_view(["GET"])
@@ -68,9 +92,15 @@ def fetch_payment_view(request, moyasar_id):
         # نحدث الداتا في الداتابيز
         try:
             payment = Payment.objects.get(moyasar_id=moyasar_id)
+            old_status = payment.status
             payment.status = data.get("status")
             payment.amount = data.get("amount")
             payment.save()
+
+            # إذا تغيرت الحالة إلى paid، نحدث الفاتورة
+            if old_status != "paid" and payment.status == "paid":
+                update_invoice_on_payment_success(payment)
+
         except Payment.DoesNotExist:
             payment = None
 
@@ -80,7 +110,8 @@ def fetch_payment_view(request, moyasar_id):
         })
     else:
         return Response({"error": data}, status=status_code)
-    
+
+
 class ListPaymentsView(APIView):
     """
     API endpoint to list all payments
@@ -89,79 +120,171 @@ class ListPaymentsView(APIView):
         data = list_payments()
         return Response(data)
 
+
 @api_view(["POST"])
 def refund_payment_view(request, moyasar_id):
     """
     API endpoint للقيام بالـ refund.
     """
-    amount = request.data.get("amount")  # لو فيه refund جزئي
+    amount = request.data.get("amount")
     result = refund_payment(payment_id=moyasar_id, amount=amount)
-    return Response(result)
-
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def payment_callback_view(request):
-    SECRET_TOKEN = "ms_webhook_4x8dK2Q9LzT7P1nV"
-
-    # نطبع كل الهيدرز والبوست داتا
-    print("📩 Callback received")
-    print("Headers:", dict(request.headers))
-    print("Body:", request.data)
-
-    signature = request.headers.get("X-Event-Secret")
-    print("🔑 Received Signature:", signature)
-    print("🔑 Expected Signature:", SECRET_TOKEN)
-
-    if not signature or signature != SECRET_TOKEN:
-        return Response({"error": "Invalid webhook secret"}, status=403)
-
-    data = request.data
-    moyasar_id = data.get("id")
-    status = data.get("status")
-    amount = data.get("amount")
-    currency = data.get("currency")
-
-    if not moyasar_id:
-        return Response({"error": "Missing payment ID"}, status=400)
-
+    
+    # تحديث حالة الدفع والفاتورة عند الإرجاع
     try:
         payment = Payment.objects.get(moyasar_id=moyasar_id)
-
-        if payment.amount != amount:
-            return Response({"error": "Amount mismatch"}, status=400)
-
-        payment.status = status
-        payment.amount = amount
-        payment.currency = currency or payment.currency
+        payment.status = "refunded"
         payment.save()
-
-        if status == "paid":
-            Invoice.objects.get_or_create(
-                payment=payment,
-                defaults={
-                    "invoice_number": str(uuid.uuid4()),
-                    "amount": amount,
-                    "currency": currency or "SAR",
-                    "paid_at": timezone.now(),
-                }
-            )
-
+        logger.info(f"Payment {moyasar_id} status updated to refunded")
     except Payment.DoesNotExist:
-        return Response({"error": "Payment not found"}, status=404)
+        pass
+    
+    return Response(result)
 
-    return Response({"success": True})
 
-
-
-@api_view(["GET"])
+@csrf_exempt
+@require_POST
 @permission_classes([AllowAny])
-def payment_redirect_view(request):
+def moyasar_webhook(request):
+    """
+    Webhook endpoint لاستقبال التحديثات من Moyasar
+    """
+    try:
+        # التحقق من صحة الـ webhook
+        signature = request.headers.get('X-Moyasar-Signature')
+        if not verify_webhook_signature(request.body, signature):
+            logger.warning("Invalid webhook signature")
+            return HttpResponse(status=400)
+
+        payload = json.loads(request.body)
+        event_type = payload.get('type')
+        payment_data = payload.get('data', {})
+        
+        logger.info(f"Received webhook: {event_type} for payment {payment_data.get('id')}")
+
+        if event_type == 'payment_paid':
+            handle_payment_paid(payment_data)
+        elif event_type == 'payment_failed':
+            handle_payment_failed(payment_data)
+        elif event_type == 'payment_refunded':
+            handle_payment_refunded(payment_data)
+
+        return HttpResponse(status=200)
+
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        return HttpResponse(status=500)
+
+
+def verify_webhook_signature(payload, signature):
+    """
+    التحقق من صحة الـ webhook signature
+    """
+    if not signature or not settings.MOYASAR_WEBHOOK_SECRET:
+        return False
+    
+    import hmac
+    import hashlib
+    
+    expected_signature = hmac.new(
+        settings.MOYASAR_WEBHOOK_SECRET.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(signature, expected_signature)
+
+
+def handle_payment_paid(payment_data):
+    """
+    معالجة حدث الدفع المكتمل
+    """
+    moyasar_id = payment_data.get('id')
+    
+    try:
+        with transaction.atomic():
+            payment = Payment.objects.get(moyasar_id=moyasar_id)
+            payment.status = 'paid'
+            payment.amount = payment_data.get('amount', payment.amount)
+            payment.save()
+
+            # تحديث الفاتورة
+            update_invoice_on_payment_success(payment)
+            
+            logger.info(f"Payment {moyasar_id} marked as paid")
+            
+    except Payment.DoesNotExist:
+        logger.warning(f"Payment {moyasar_id} not found in database")
+
+
+def handle_payment_failed(payment_data):
+    """
+    معالجة حدث فشل الدفع
+    """
+    moyasar_id = payment_data.get('id')
+    
+    try:
+        payment = Payment.objects.get(moyasar_id=moyasar_id)
+        payment.status = 'failed'
+        payment.save()
+        logger.info(f"Payment {moyasar_id} marked as failed")
+        
+    except Payment.DoesNotExist:
+        logger.warning(f"Payment {moyasar_id} not found in database")
+
+
+def handle_payment_refunded(payment_data):
+    """
+    معالجة حدث إرجاع المبلغ
+    """
+    moyasar_id = payment_data.get('id')
+    
+    try:
+        payment = Payment.objects.get(moyasar_id=moyasar_id)
+        payment.status = 'refunded'
+        payment.save()
+        logger.info(f"Payment {moyasar_id} marked as refunded")
+        
+    except Payment.DoesNotExist:
+        logger.warning(f"Payment {moyasar_id} not found in database")
+
+
+def update_invoice_on_payment_success(payment):
+    """
+    تحديث الفاتورة عند نجاح الدفع
+    """
+    try:
+        invoice = payment.invoice
+        if not invoice.paid_at:  # لو لم يتم تحديثها من قبل
+            invoice.paid_at = timezone.now()
+            invoice.save()
+            logger.info(f"Invoice {invoice.invoice_number} marked as paid")
+    except Invoice.DoesNotExist:
+        logger.error(f"No invoice found for payment {payment.moyasar_id}")
+
+
+@permission_classes([AllowAny])
+def payment_callback_view(request):
+    """
+    Callback URL لإعادة توجيه المستخدم بعد الدفع
+    """
     status = request.GET.get("status")
     moyasar_id = request.GET.get("id")
 
     try:
         payment = Payment.objects.get(moyasar_id=moyasar_id)
         invoice = getattr(payment, "invoice", None)
+        
+        # تحديث حالة الدفع من Moyasar
+        payment_data, status_code = fetch_payment_api(moyasar_id)
+        if status_code == 200:
+            old_status = payment.status
+            payment.status = payment_data.get("status")
+            payment.save()
+            
+            # إذا تم الدفع بنجاح، نحدث الفاتورة
+            if old_status != "paid" and payment.status == "paid":
+                update_invoice_on_payment_success(payment)
+                
     except Payment.DoesNotExist:
         payment = None
         invoice = None
@@ -177,21 +300,19 @@ def payment_redirect_view(request):
         })
 
 
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def invoice_detail_view(request, moyasar_id):
     try:
         payment = Payment.objects.get(moyasar_id=moyasar_id)
-        invoice = payment.invoice  # لأننا عملنا OneToOneField
+        invoice = payment.invoice
         serializer = InvoiceSerializer(invoice)
         return Response(serializer.data)
     except Payment.DoesNotExist:
         return Response({"error": "Payment not found"}, status=404)
     except Invoice.DoesNotExist:
         return Response({"error": "Invoice not found"}, status=404)
-    
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -199,8 +320,18 @@ def all_invoices_view(request):
     """
     تعرض كل الفواتير الموجودة في النظام
     """
-    invoices = Invoice.objects.all().order_by('-created_at')  # ترتيب من الأحدث للأقدم
+    invoices = Invoice.objects.all().order_by('-created_at')
     serializer = InvoiceSerializer(invoices, many=True)
     return Response(serializer.data)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_invoices_view(request):
+    """
+    تعرض فواتير المستخدم الحالي فقط
+    """
+    user_payments = Payment.objects.filter(user=request.user)
+    invoices = Invoice.objects.filter(payment__in=user_payments).order_by('-created_at')
+    serializer = InvoiceSerializer(invoices, many=True)
+    return Response(serializer.data)
