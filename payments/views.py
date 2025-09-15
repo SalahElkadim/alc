@@ -99,20 +99,17 @@ def refund_payment_view(request, moyasar_id):
     return Response(result)
 
 
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
-    # السيكريت اللي حطيته في Dashboard (Webhook Secret Token)
-    secret = settings.MOYASAR_WEBHOOK_SECRET.encode("utf-8")
+    # التوكن اللي ضفته في Dashboard
+    SECRET_TOKEN = "ms_webhook_4x8dK2Q9LzT7P1nV"
 
     # التوقيع اللي ميسر بيبعتو في الهيدر
     signature = request.headers.get("X-Webhook-Token")
 
-    if not signature or signature != settings.MOYASAR_WEBHOOK_SECRET:
+    if not signature or signature != SECRET_TOKEN:
         return Response({"error": "Invalid webhook secret"}, status=403)
-
-    data = request.data
 
     data = request.data
     moyasar_id = data.get("id")
