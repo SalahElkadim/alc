@@ -108,7 +108,7 @@ def payment_callback_view(request):
     print("Headers:", dict(request.headers))
     print("Body:", request.data)
 
-    signature = request.headers.get("X-Webhook-Token")
+    signature = request.headers.get("X-Event-Secret")
     print("🔑 Received Signature:", signature)
     print("🔑 Expected Signature:", SECRET_TOKEN)
 
