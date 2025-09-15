@@ -38,7 +38,7 @@ class CreatePaymentView(APIView):
                 "month": source_data.get("month"),
                 "year": source_data.get("year"),
                 "cvc": source_data.get("cvc"),
-                "3ds": False,
+                "3ds": True,
                 "manual": False,
                 "save_card": False
             }
