@@ -98,15 +98,19 @@ def refund_payment_view(request, moyasar_id):
     result = refund_payment(payment_id=moyasar_id, amount=amount)
     return Response(result)
 
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
-    # التوكن اللي ضفته في Dashboard
     SECRET_TOKEN = "ms_webhook_4x8dK2Q9LzT7P1nV"
 
-    # التوقيع اللي ميسر بيبعتو في الهيدر
+    # نطبع كل الهيدرز والبوست داتا
+    print("📩 Callback received")
+    print("Headers:", dict(request.headers))
+    print("Body:", request.data)
+
     signature = request.headers.get("X-Webhook-Token")
+    print("🔑 Received Signature:", signature)
+    print("🔑 Expected Signature:", SECRET_TOKEN)
 
     if not signature or signature != SECRET_TOKEN:
         return Response({"error": "Invalid webhook secret"}, status=403)
@@ -146,6 +150,7 @@ def payment_callback_view(request):
         return Response({"error": "Payment not found"}, status=404)
 
     return Response({"success": True})
+
 
 
 @api_view(["GET"])
