@@ -8,7 +8,9 @@ from .views import (
     invoice_detail_view,
     all_invoices_view,
     user_invoices_view,
-    moyasar_webhook
+    moyasar_webhook,
+    display_invoice_view,
+    test_callback_view
 )
 
 urlpatterns = [
@@ -20,9 +22,13 @@ urlpatterns = [
     # Callback and webhook endpoints
     path('callback/', payment_callback_view, name='payment-callback'),
     path('webhook/', moyasar_webhook, name='moyasar-webhook'),
+    path('test-callback/', test_callback_view, name='test-callback'),
     
     # Invoice endpoints
     path('invoice/<str:moyasar_id>/', invoice_detail_view, name='invoice-detail'),
     path('invoices/', all_invoices_view, name='all-invoices'),
     path('my-invoices/', user_invoices_view, name='user-invoices'),
+    
+    # Invoice display and download
+    path('invoice/<str:moyasar_id>/display/', display_invoice_view, name='invoice-display'),
 ]
