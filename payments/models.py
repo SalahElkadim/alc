@@ -118,12 +118,34 @@ class Invoice(models.Model):
 
     def save(self, *args, **kwargs):
         # تحديث بيانات العميل من المستخدم المرتبط
-        if not self.customer_name and self.payment.user:
+        if not self.customer_name and self.payment and self.payment.user:
             user = self.payment.user
-            self.customer_name = f"{user.first_name} {user.last_name}".strip() or user.username
-            self.customer_email = user.email
-            # إذا كان هناك حقل phone في CustomUser
+            
+            # محاولة الحصول على الاسم من عدة مصادر
+            if hasattr(user, 'first_name') and hasattr(user, 'last_name'):
+                # إذا كان CustomUser يحتوي على first_name و last_name
+                self.customer_name = f"{user.first_name} {user.last_name}".strip()
+            elif hasattr(user, 'full_name'):
+                # إذا كان هناك حقل full_name
+                self.customer_name = user.full_name
+            elif hasattr(user, 'name'):
+                # إذا كان هناك حقل name
+                self.customer_name = user.name
+            else:
+                # الافتراضي هو username
+                self.customer_name = user.username
+            
+            # إذا لم نحصل على اسم، استخدم username
+            if not self.customer_name:
+                self.customer_name = user.username
+                
+            # البريد الإلكتروني
+            self.customer_email = getattr(user, 'email', '')
+            
+            # رقم الهاتف إذا كان موجود
             if hasattr(user, 'phone'):
                 self.customer_phone = user.phone
+            elif hasattr(user, 'phone_number'):
+                self.customer_phone = user.phone_number
         
         super().save(*args, **kwargs)
