@@ -14,7 +14,8 @@ def create_payment(given_id, amount, currency="SAR", description=None, callback_
         "amount": amount,
         "currency": currency,
         "description": description,
-        "callback_url": "https://alc-production-8568.up.railway.app/payments/redirect/",
+        "callback_url": "https://alc-production-8568.up.railway.app/payments/callback/",
+        "redirect_url": "https://alc-production-8568.up.railway.app/payments/redirect/",
         "source": source,
         "metadata": metadata,
         "apply_coupon": True
