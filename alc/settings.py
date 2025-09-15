@@ -134,6 +134,7 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+MOYASAR_WEBHOOK_SECRET = "ms_webhook_4x8dK2Q9LzT7P1nV"
 
 AUTH_PASSWORD_VALIDATORS = [
     {

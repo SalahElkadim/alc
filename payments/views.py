@@ -100,16 +100,20 @@ def refund_payment_view(request, moyasar_id):
 
 
 
-from django.shortcuts import render
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def payment_callback_view(request):
-    print("📩 Callback received")
+    # ✅ تحقق من الـ Secret Token
+    secret = request.headers.get("X-Webhook-Secret")
+    if secret != settings.MOYASAR_WEBHOOK_SECRET:
+        print("❌ Invalid webhook secret:", secret)
+        return Response({"error": "Invalid secret"}, status=403)
+
+    print("📩 Callback received and verified")
     print("Headers:", dict(request.headers))
     print("Body:", request.data)
 
     data = request.data
-
     moyasar_id = data.get("id")
     status = data.get("status")
     amount = data.get("amount")
@@ -121,19 +125,16 @@ def payment_callback_view(request):
     try:
         payment = Payment.objects.get(moyasar_id=moyasar_id)
 
-        # تأكد أن المبلغ متطابق
         if payment.amount != amount:
             return Response({"error": "Amount mismatch"}, status=400)
 
-        # تحديث بيانات الدفع
         payment.status = status
         payment.amount = amount
         payment.currency = currency or payment.currency
         payment.save()
 
-        # لو الدفع ناجح → إنشاء فاتورة
         if status == "paid":
-            invoice, created = Invoice.objects.get_or_create(
+            Invoice.objects.get_or_create(
                 payment=payment,
                 defaults={
                     "invoice_number": str(uuid.uuid4()),
@@ -146,8 +147,8 @@ def payment_callback_view(request):
     except Payment.DoesNotExist:
         return Response({"error": "Payment not found"}, status=404)
 
-    # الكولباك يرد على البوابة فقط
     return Response({"success": True})
+
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
