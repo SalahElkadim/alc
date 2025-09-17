@@ -19,9 +19,17 @@ SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-ALLOWED_HOSTS = ["alc-production-8568.up.railway.app", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [
+    "alc-production-8568.up.railway.app",  # Railway domain
+    "alcquiz.online",                      # your root domain
+    "www.alcquiz.online",                  # www subdomain
+    "localhost",
+    "127.0.0.1",
+]
 CSRF_TRUSTED_ORIGINS = [
     "https://alc-production-8568.up.railway.app",
+    "https://alcquiz.online",
+    "https://www.alcquiz.online",
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
@@ -93,7 +101,12 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 
 ]
-CORS_ALLOW_ALL_ORIGINS = True  # مؤقتًا أثناء التطوير
+CORS_ALLOWED_ORIGINS = [
+    "https://alcquiz.online",
+    "https://www.alcquiz.online",
+    "https://alc-production-8568.up.railway.app",
+    "http://localhost:3000",   
+]
 AUTH_USER_MODEL = 'users.CustomUser'
 ROOT_URLCONF = 'alc.urls'
 
@@ -214,9 +227,8 @@ MOYASAR_SECRET_KEY = config('MOYASAR_SECRET_KEY')
 MOYASAR_PUBLISHABLE_KEY = config('MOYASAR_PUBLISHABLE_KEY')
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
 
-#DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-#SECURE_SSL_REDIRECT = not DEBUG
-#SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-#SESSION_COOKIE_SECURE = not DEBUG
-#CSRF_COOKIE_SECURE = not DEBUG
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG

@@ -1,6 +1,7 @@
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include,handler404
+from django.shortcuts import render
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -10,3 +11,8 @@ urlpatterns = [
     path('payments/',include('payments.urls')),
 
 ]
+
+def custom_page_not_found(request, exception):
+    return render(request, "404.html", status=404)
+
+handler404 = custom_page_not_found
