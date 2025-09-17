@@ -64,6 +64,11 @@ class ExamSerializer(serializers.ModelSerializer):
 from .models import ExamResult
 
 class ExamResultSerializer(serializers.ModelSerializer):
+    book_title = serializers.SerializerMethodField()
+
     class Meta:
         model = ExamResult
-        fields = ["id", "exam", "student", "book", "score", "percentage", "letter_grade", "created_at"]
+        fields = ["id", "exam", "student", "book_title", "score", "percentage", "letter_grade", "created_at"]
+
+    def get_book_title(self, obj):
+        return obj.book.title if obj.book else None
