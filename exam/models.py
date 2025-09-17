@@ -40,3 +40,14 @@ class ExamQuestion(models.Model):
         return self.is_correct
 
 # model , exam , date , 
+class ExamResult(models.Model):
+    exam = models.OneToOneField(Exam, on_delete=models.CASCADE, related_name="result")
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="exam_results")
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+    percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    letter_grade = models.CharField(max_length=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Result for {self.student} - {self.book.title} ({self.score})"

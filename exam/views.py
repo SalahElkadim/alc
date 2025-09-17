@@ -6,7 +6,7 @@ from django.db import transaction
 import random
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import Exam, ExamQuestion
+from .models import Exam, ExamQuestion,ExamResult
 from questions.models import MCQQuestion, MatchingQuestion, TrueFalseQuestion, ReadingComprehension
 from .serializers import ExamSerializer
 from django.shortcuts import get_object_or_404
@@ -312,6 +312,14 @@ class SubmitExamAPIView(APIView):
                 exam.is_finished = True
                 exam.end_time = timezone.now()
                 exam.save()
+                ExamResult.objects.create(
+                    exam=exam,
+                    student=request.user,
+                    book=exam.book,
+                    score=total_score,
+                    percentage=Decimal(str(percentage)),
+                    letter_grade=grade
+                )
 
                 return Response({
                     "success": True,
@@ -505,3 +513,26 @@ class SubmitExamAPIView(APIView):
             return "D"
         else:
             return "F"
+        
+class ExamResultsListAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        results = ExamResult.objects.filter(student=request.user).order_by("-created_at")
+        data = [
+            {
+                "exam_id": r.exam.id,
+                "book": r.book.title,
+                "score": float(r.score),
+                "percentage": float(r.percentage),
+                "letter_grade": r.letter_grade,
+                "date": r.created_at.strftime("%Y-%m-%d %H:%M"),
+            }
+            for r in results
+        ]
+        return Response({
+            "success": True,
+            "results_count": len(data),
+            "results": data
+        }, status=status.HTTP_200_OK)
