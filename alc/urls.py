@@ -1,6 +1,6 @@
 
 from django.contrib import admin
-from django.urls import path, include,handler404
+from django.urls import path, include
 from django.shortcuts import render
 
 urlpatterns = [
@@ -12,7 +12,4 @@ urlpatterns = [
 
 ]
 
-def custom_page_not_found(request, exception):
-    return render(request, "404.html", status=404)
-
-handler404 = custom_page_not_found
+handler404 = "users.views.custom_404"

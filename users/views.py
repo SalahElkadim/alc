@@ -16,6 +16,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.shortcuts import render
 
 
 logger = logging.getLogger(__name__)
@@ -305,3 +306,6 @@ class CustomTokenRefreshView(TokenRefreshView):
                 session.save()
 
         return response
+
+def custom_404(request, exception):
+    return render(request, "errors/404.html", status=404)
