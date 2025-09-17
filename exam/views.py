@@ -513,7 +513,7 @@ class SubmitExamAPIView(APIView):
             return "D"
         else:
             return "F"
-        
+            
 class ExamResultsListAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
