@@ -60,3 +60,10 @@ class ExamSerializer(serializers.ModelSerializer):
                 result.append(question_data)
 
         return result
+
+from .models import ExamResult
+
+class ExamResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExamResult
+        fields = ["id", "exam", "student", "book", "score", "percentage", "letter_grade", "created_at"]

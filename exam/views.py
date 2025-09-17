@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Exam, ExamQuestion,ExamResult
 from questions.models import MCQQuestion, MatchingQuestion, TrueFalseQuestion, ReadingComprehension
-from .serializers import ExamSerializer
+from .serializers import ExamSerializer,ExamResultSerializer
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils import timezone
@@ -514,25 +514,11 @@ class SubmitExamAPIView(APIView):
         else:
             return "F"
             
-class ExamResultsListAPIView(APIView):
+class ExamResultListAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         results = ExamResult.objects.filter(student=request.user).order_by("-created_at")
-        data = [
-            {
-                "exam_id": r.exam.id,
-                "book": r.book.title,
-                "score": float(r.score),
-                "percentage": float(r.percentage),
-                "letter_grade": r.letter_grade,
-                "date": r.created_at.strftime("%Y-%m-%d %H:%M"),
-            }
-            for r in results
-        ]
-        return Response({
-            "success": True,
-            "results_count": len(data),
-            "results": data
-        }, status=status.HTTP_200_OK)
+        serializer = ExamResultSerializer(results, many=True)
+        return Response(serializer.data)
