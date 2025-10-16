@@ -141,6 +141,56 @@ def fetch_payment_view(request, moyasar_id):
 
 
 
+class ListPaymentsView(APIView):
+    """
+    API endpoint to list all payments
+    """
+    def get(self, request):
+        try:
+            data = list_payments()
+            return Response(data)
+        except Exception as e:
+            logger.error(f"Error in ListPaymentsView: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
+
+@api_view(["POST"])
+def refund_payment_view(request, moyasar_id):
+    """
+    API endpoint للقيام بالـ refund.
+    """
+    try:
+        amount = request.data.get("amount")
+        result = refund_payment(payment_id=moyasar_id, amount=amount)
+        
+        # تحديث حالة الدفع والفاتورة عند الإرجاع
+        try:
+            payment = Payment.objects.get(moyasar_id=moyasar_id)
+            payment.status = "refunded"
+            payment.save()
+            logger.info(f"Payment {moyasar_id} status updated to refunded")
+        except Payment.DoesNotExist:
+            logger.warning(f"Payment {moyasar_id} not found for refund update")
+        
+        return Response(result)
+    except Exception as e:
+        logger.error(f"Error in refund_payment_view: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+def update_invoice_on_payment_success(payment):
+    """
+    تحديث حالة الفاتورة عند نجاح الدفع
+    """
+    try:
+        invoice = Invoice.objects.get(payment=payment)
+        invoice.paid_at = timezone.now()
+        invoice.status = 'paid'
+        invoice.save()
+        logger.info(f"Invoice {invoice.invoice_number} marked as paid")
+    except Invoice.DoesNotExist:
+        logger.warning(f"No invoice found for payment {payment.moyasar_id}")
+
 
 @csrf_exempt
 @require_POST
