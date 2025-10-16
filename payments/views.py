@@ -64,6 +64,7 @@ class CreatePaymentView(APIView):
             payment_response, status_code = create_payment(
                 given_id=given_id,
                 amount=amount,
+                callback_url="https://alc-production-5d34.up.railway.app/payment/callback/",
                 currency="SAR",
                 description=description,
                 token=token,
