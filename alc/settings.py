@@ -17,7 +17,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config("SECRET_KEY")
+SECRET_KEY="django-insecure-3#-m1uyln4jei7me&3=*+ued3w403@(72wxzg#$2@o_s@so_7l"
+# JWT
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
@@ -66,8 +67,8 @@ REST_FRAMEWORK = {
 }
 # إعدادات JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=config("ACCESS_TOKEN_LIFETIME", cast=int, default=1)),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=config("REFRESH_TOKEN_LIFETIME", cast=int, default=7)),
+    "ACCESS_TOKEN_LIFETIME":1  ,
+    "REFRESH_TOKEN_LIFETIME":7 ,
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
@@ -140,7 +141,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
     'default': dj_database_url.parse(
-        config("DATABASE_URL"),
+"postgresql://postgres:tHTpzmhrKmjpBODZffagOQKAVwzBYLBE@hopper.proxy.rlwy.net:17588/railway",
         conn_max_age=600,
         engine='django.db.backends.postgresql_psycopg2'
     )
@@ -197,8 +198,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "salah.mohamed.elkadim@gmail.com"
-EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = "salah.mohamed.elkadim@gmail.com"
+EMAIL_HOST_PASSWORD = "fqzd njeb fffg sact"
 
 
 
@@ -223,11 +224,11 @@ class Command(BaseCommand):
         self.stdout.write(f'Cleaned {count} expired sessions')
 
 
-MOYASAR_SECRET_KEY = os.getenv("MOYASAR_SECRET_KEY")
-MOYASAR_PUBLISHABLE_KEY = os.getenv("MOYASAR_PUBLISHABLE_KEY")
+MOYASAR_SECRET_KEY = "sk_live_Kv99pG1WCswpafrzbfpGH9E1w1YucyixxfcnKDLM"
+MOYASAR_PUBLISHABLE_KEY = "pk_live_fKVM1h6efFnnvHcCz34HWaRFUMwuUBuXBs1qTYxk"
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
-
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG=False
+#DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = not DEBUG
