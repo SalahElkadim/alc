@@ -28,7 +28,6 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
 ]
 CSRF_TRUSTED_ORIGINS = [
-    "alc-production-5d34.up.railway.app  " , 
     "https://alc-production-5d34.up.railway.app",
     "http://127.0.0.1:8000",
     "http://localhost:8000",
@@ -102,9 +101,7 @@ MIDDLEWARE = [
 
 ]
 CORS_ALLOWED_ORIGINS = [
-    "https://alcquiz.online",
-    "https://www.alcquiz.online",
-    "https://alc-production-8568.up.railway.app",
+    "https://alc-production-5d34.up.railway.app",
     "http://localhost:3000",   
 ]
 AUTH_USER_MODEL = 'users.CustomUser'
