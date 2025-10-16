@@ -149,7 +149,6 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
-MOYASAR_WEBHOOK_SECRET = "ms_webhook_4x8dK2Q9LzT7P1nV"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -200,7 +199,6 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "salah.mohamed.elkadim@gmail.com"
 EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-MOYASAR_WEBHOOK_SECRET = config("MOYASAR_WEBHOOK_SECRET")
 
 
 
