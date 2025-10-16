@@ -48,7 +48,7 @@ class CreatePaymentView(APIView):
                 description="description",
                 currency="SAR",
                 source={"type": "creditcard"},  # النوع فقط، بدون بيانات البطاقة
-                metadata={"user": user.username}
+                metadata={"user": user.email}
             )
 
             if "id" not in payment_response:
