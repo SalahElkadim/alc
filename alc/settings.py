@@ -4,6 +4,7 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 load_dotenv()
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -63,8 +64,8 @@ REST_FRAMEWORK = {
 }
 # إعدادات JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME":1  ,
-    "REFRESH_TOKEN_LIFETIME":7 ,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
