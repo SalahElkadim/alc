@@ -47,7 +47,7 @@ class CreatePaymentView(APIView):
                 amount=amount,
                 description="description",
                 currency="SAR",
-                source={"type": "creditcard"},  # النوع فقط، بدون بيانات البطاقة
+                source={"type": "redirect"},  # النوع فقط، بدون بيانات البطاقة
                 metadata={"user": user.email}
             )
 
