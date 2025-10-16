@@ -222,6 +222,8 @@ class Command(BaseCommand):
 MOYASAR_SECRET_KEY = "sk_live_Kv99pG1WCswpafrzbfpGH9E1w1YucyixxfcnKDLM"
 MOYASAR_PUBLISHABLE_KEY = "pk_live_fKVM1h6efFnnvHcCz34HWaRFUMwuUBuXBs1qTYxk"
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
+MOYASAR_API_URL = "https://api.moyasar.com/v1/payments"
+
 DEBUG=True
 #DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 SECURE_SSL_REDIRECT = not DEBUG

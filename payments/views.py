@@ -21,95 +21,115 @@ import logging
 from decimal import Decimal
 from django.db import transaction
 
+
+
+
 logger = logging.getLogger(__name__)
+
+
+def payment_page(request):
+    """
+    عرض صفحة الدفع
+    """
+    amount = request.GET.get('amount', 10000)  # السماح بتمرير المبلغ من الـ query params
+    
+    return render(request, "payment.html", {
+        "amount": amount
+    })
+
+
 class CreatePaymentView(APIView):
     """
-    إنشاء عملية دفع جديدة في Live Mode باستخدام Payment Intent
+    إنشاء عملية دفع باستخدام Tokenization (ميسر)
     """
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # ✅ JWT Authentication مطلوب
 
     def post(self, request):
         try:
-            user = request.user
             data = request.data
+            token = data.get("source", {}).get("token")
 
-            # تأكد من وجود المبلغ والوصف
-            amount = data.get("amount", 10000)  # بالهللة (100 ريال)
-            description = data.get("description", "فتح الكتب")
-            callback_url = data.get("callback_url", "https://alc-production-5d34.up.railway.app/payments/callback/")
-
-            if not amount:
-                return Response({"error": "المبلغ مطلوب"}, status=400)
-
-            # نرسل فقط المعلومات الضرورية إلى Moyasar
-            # استخدم payment intent بدون source للحصول على صفحة دفع
-            payment_response = create_payment(
-                given_id=request.user.id,
-                amount=amount,
-                description=description,
-                currency="SAR",
-                callback_url=callback_url,
-                metadata={"user": user.email}
-                # لا ترسل source على الإطلاق!
-            )
-
-            if "id" not in payment_response:
+            if not token:
                 return Response({
-                    "success": False,
-                    "error": payment_response
+                    "success": False, 
+                    "error": "Token is required"
                 }, status=400)
 
-            # نخزن الدفع في قاعدة البيانات
-            payment, created = Payment.objects.get_or_create(
-                user=user,
-                moyasar_id=payment_response["id"],
-                defaults={
-                    "amount": payment_response.get("amount"),
-                    "status": payment_response.get("status"),
-                    "description": description,
+            amount = data.get("amount", 10000)
+            description = data.get("description", "Payment")
+
+            # ✅ استخدام user ID كـ given_id
+            given_id = f"user-{request.user.id}-{str(uuid.uuid4())[:8]}"
+
+            payment_response, status_code = create_payment(
+                given_id=given_id,
+                amount=amount,
+                currency="SAR",
+                description=description,
+                token=token,
+                metadata={
+                    "username": request.user.email,
+                    "user_id": str(request.user.id)
                 }
             )
 
-            # إنشاء فاتورة مرتبطة
-            if created:
-                self.create_invoice_for_payment(payment, description)
+            logger.info(f"📩 Moyasar Response: {payment_response}")
 
-            # نرجع رابط الدفع للعميل
-            # Moyasar بترجع checkout_url عشان توجه المستخدم للدفع
-            payment_url = f"https://moyasar.com/checkouts/{payment_response['id']}"
+            # حفظ الدفع في قاعدة البيانات
+            if "id" in payment_response:
+                payment, _ = Payment.objects.get_or_create(
+                    moyasar_id=payment_response["id"],
+                    defaults={
+                        "amount": payment_response["amount"],
+                        "status": payment_response["status"],
+                        "description": payment_response.get("description", ""),
+                    },
+                )
 
-            return Response({
-                "success": True,
-                "payment_url": payment_url,
-                "payment_id": payment_response["id"],
-                "status": payment_response["status"]
-            })
+                # إنشاء فاتورة
+                self.create_invoice(payment, description)
+
+            status = payment_response.get("status")
+
+            # معالجة الحالات المختلفة
+            if status == "initiated":
+                return Response({
+                    "status": "initiated",
+                    "transaction_url": payment_response["source"].get("transaction_url"),
+                    "moyasar_data": payment_response
+                })
+            elif status == "paid":
+                return Response({
+                    "status": "paid",
+                    "moyasar_data": payment_response
+                })
+            else:
+                return Response({
+                    "status": status,
+                    "message": payment_response.get("message", "Unknown status"),
+                    "moyasar_data": payment_response
+                }, status=400)
 
         except Exception as e:
-            logger.error(f"Error in CreatePaymentView: {str(e)}")
+            logger.error(f"❌ Error in CreatePaymentView: {e}", exc_info=True)
             return Response({
-                "success": False,
+                "success": False, 
                 "error": str(e)
             }, status=500)
 
-    def create_invoice_for_payment(self, payment, description=None):
-        """إنشاء فاتورة عند إنشاء الدفعة"""
+    def create_invoice(self, payment, description):
+        """إنشاء فاتورة مرتبطة بالدفع"""
         invoice_number = f"INV-{timezone.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
-        invoice = Invoice.objects.create(
+        Invoice.objects.create(
             payment=payment,
             invoice_number=invoice_number,
             amount=Decimal(payment.amount) / 100,
-            currency='SAR',
-            description=description or f"Payment for {payment.moyasar_id}",
+            currency="SAR",
+            description=description,
         )
-        return invoice
-
 
 @api_view(["GET"])
 def fetch_payment_view(request, moyasar_id):
-    """
-    جلب معلومات الدفع من Moyasar وتحديث قاعدة البيانات
-    """
     try:
         data, status_code = fetch_payment_api(moyasar_id)
 
@@ -138,7 +158,6 @@ def fetch_payment_view(request, moyasar_id):
     except Exception as e:
         logger.error(f"Error in fetch_payment_view: {str(e)}")
         return Response({"error": str(e)}, status=500)
-
 
 
 class ListPaymentsView(APIView):
@@ -176,20 +195,6 @@ def refund_payment_view(request, moyasar_id):
     except Exception as e:
         logger.error(f"Error in refund_payment_view: {str(e)}")
         return Response({"error": str(e)}, status=500)
-
-
-def update_invoice_on_payment_success(payment):
-    """
-    تحديث حالة الفاتورة عند نجاح الدفع
-    """
-    try:
-        invoice = Invoice.objects.get(payment=payment)
-        invoice.paid_at = timezone.now()
-        invoice.status = 'paid'
-        invoice.save()
-        logger.info(f"Invoice {invoice.invoice_number} marked as paid")
-    except Invoice.DoesNotExist:
-        logger.warning(f"No invoice found for payment {payment.moyasar_id}")
 
 
 @csrf_exempt
