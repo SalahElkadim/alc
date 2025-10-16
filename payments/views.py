@@ -22,10 +22,9 @@ from decimal import Decimal
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
-
 class CreatePaymentView(APIView):
     """
-    إنشاء عملية دفع جديدة في Live Mode بدون التعامل مع بيانات البطاقة.
+    إنشاء عملية دفع جديدة في Live Mode باستخدام Payment Intent
     """
     #permission_classes = [IsAuthenticated]
 
@@ -35,20 +34,23 @@ class CreatePaymentView(APIView):
             data = request.data
 
             # تأكد من وجود المبلغ والوصف
-            amount = 10000
-            description = "فتح الكتب"
+            amount = data.get("amount", 10000)  # بالهللة (100 ريال)
+            description = data.get("description", "فتح الكتب")
+            callback_url = data.get("callback_url", "https://alc-production-5d34.up.railway.app/payments/callback/")
 
             if not amount:
                 return Response({"error": "المبلغ مطلوب"}, status=400)
 
             # نرسل فقط المعلومات الضرورية إلى Moyasar
+            # استخدم payment intent بدون source للحصول على صفحة دفع
             payment_response = create_payment(
                 given_id=request.user.id,
                 amount=amount,
-                description="description",
+                description=description,
                 currency="SAR",
-                source={"type": "redirect"},  # النوع فقط، بدون بيانات البطاقة
+                callback_url=callback_url,
                 metadata={"user": user.email}
+                # لا ترسل source على الإطلاق!
             )
 
             if "id" not in payment_response:
@@ -72,8 +74,9 @@ class CreatePaymentView(APIView):
             if created:
                 self.create_invoice_for_payment(payment, description)
 
-            # نرجع رابط الدفع للعميل (اللي هيفتحه في المتصفح)
-            payment_url = payment_response.get("source", {}).get("transaction_url")
+            # نرجع رابط الدفع للعميل
+            # Moyasar بترجع checkout_url عشان توجه المستخدم للدفع
+            payment_url = f"https://moyasar.com/checkouts/{payment_response['id']}"
 
             return Response({
                 "success": True,
@@ -100,75 +103,6 @@ class CreatePaymentView(APIView):
             description=description or f"Payment for {payment.moyasar_id}",
         )
         return invoice
-
-@api_view(["GET"])
-def fetch_payment_view(request, moyasar_id):
-    try:
-        data, status_code = fetch_payment_api(moyasar_id)
-
-        if status_code == 200:
-            # نحدث الداتا في الداتابيز
-            try:
-                payment = Payment.objects.get(moyasar_id=moyasar_id)
-                old_status = payment.status
-                payment.status = data.get("status")
-                payment.amount = data.get("amount")
-                payment.save()
-
-                # إذا تغيرت الحالة إلى paid، نحدث الفاتورة
-                if old_status != "paid" and payment.status == "paid":
-                    update_invoice_on_payment_success(payment)
-
-            except Payment.DoesNotExist:
-                payment = None
-
-            return Response({
-                "moyasar_data": data,
-                "local_payment": PaymentSerializer(payment).data if payment else None
-            })
-        else:
-            return Response({"error": data}, status=status_code)
-    except Exception as e:
-        logger.error(f"Error in fetch_payment_view: {str(e)}")
-        return Response({"error": str(e)}, status=500)
-
-
-class ListPaymentsView(APIView):
-    """
-    API endpoint to list all payments
-    """
-    def get(self, request):
-        try:
-            data = list_payments()
-            return Response(data)
-        except Exception as e:
-            logger.error(f"Error in ListPaymentsView: {str(e)}")
-            return Response({"error": str(e)}, status=500)
-
-
-@api_view(["POST"])
-def refund_payment_view(request, moyasar_id):
-    """
-    API endpoint للقيام بالـ refund.
-    """
-    try:
-        amount = request.data.get("amount")
-        result = refund_payment(payment_id=moyasar_id, amount=amount)
-        
-        # تحديث حالة الدفع والفاتورة عند الإرجاع
-        try:
-            payment = Payment.objects.get(moyasar_id=moyasar_id)
-            payment.status = "refunded"
-            payment.save()
-            logger.info(f"Payment {moyasar_id} status updated to refunded")
-        except Payment.DoesNotExist:
-            logger.warning(f"Payment {moyasar_id} not found for refund update")
-        
-        return Response(result)
-    except Exception as e:
-        logger.error(f"Error in refund_payment_view: {str(e)}")
-        return Response({"error": str(e)}, status=500)
-
 
 @csrf_exempt
 @require_POST
