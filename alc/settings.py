@@ -2,7 +2,6 @@ from datetime import timedelta
 from pathlib import Path
 import os
 import dj_database_url
-from decouple import config, Csv
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -23,9 +22,7 @@ SECRET_KEY="django-insecure-3#-m1uyln4jei7me&3=*+ued3w403@(72wxzg#$2@o_s@so_7l"
 # SECURITY WARNING: don't run with debug turned on in production!
 
 ALLOWED_HOSTS = [
-    "alc-production-8568.up.railway.app",  # Railway domain
-    "alcquiz.online",                      # your root domain
-    "www.alcquiz.online",                  # www subdomain
+    "alc-production-5d34.up.railway.app  " ,              # www subdomain
     "localhost",
     "127.0.0.1",
 ]
@@ -227,7 +224,7 @@ class Command(BaseCommand):
 MOYASAR_SECRET_KEY = "sk_live_Kv99pG1WCswpafrzbfpGH9E1w1YucyixxfcnKDLM"
 MOYASAR_PUBLISHABLE_KEY = "pk_live_fKVM1h6efFnnvHcCz34HWaRFUMwuUBuXBs1qTYxk"
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
-DEBUG=False
+DEBUG=True
 #DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
