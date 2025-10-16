@@ -22,14 +22,14 @@ SECRET_KEY="django-insecure-3#-m1uyln4jei7me&3=*+ued3w403@(72wxzg#$2@o_s@so_7l"
 # SECURITY WARNING: don't run with debug turned on in production!
 
 ALLOWED_HOSTS = [
-    "alc-production-5d34.up.railway.app  " ,              # www subdomain
+    "alc-production-5d34.up.railway.app  " , 
+    "https://alc-production-5d34.up.railway.app",
     "localhost",
     "127.0.0.1",
 ]
 CSRF_TRUSTED_ORIGINS = [
-    "https://alc-production-8568.up.railway.app",
-    "https://alcquiz.online",
-    "https://www.alcquiz.online",
+    "alc-production-5d34.up.railway.app  " , 
+    "https://alc-production-5d34.up.railway.app",
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
