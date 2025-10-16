@@ -104,6 +104,44 @@ class CreatePaymentView(APIView):
         )
         return invoice
 
+
+@api_view(["GET"])
+def fetch_payment_view(request, moyasar_id):
+    """
+    جلب معلومات الدفع من Moyasar وتحديث قاعدة البيانات
+    """
+    try:
+        data, status_code = fetch_payment_api(moyasar_id)
+
+        if status_code == 200:
+            # نحدث الداتا في الداتابيز
+            try:
+                payment = Payment.objects.get(moyasar_id=moyasar_id)
+                old_status = payment.status
+                payment.status = data.get("status")
+                payment.amount = data.get("amount")
+                payment.save()
+
+                # إذا تغيرت الحالة إلى paid، نحدث الفاتورة
+                if old_status != "paid" and payment.status == "paid":
+                    update_invoice_on_payment_success(payment)
+
+            except Payment.DoesNotExist:
+                payment = None
+
+            return Response({
+                "moyasar_data": data,
+                "local_payment": PaymentSerializer(payment).data if payment else None
+            })
+        else:
+            return Response({"error": data}, status=status_code)
+    except Exception as e:
+        logger.error(f"Error in fetch_payment_view: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+
+
 @csrf_exempt
 @require_POST
 def moyasar_webhook(request):
