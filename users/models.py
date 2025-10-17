@@ -46,6 +46,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     failed_login_attempts = models.IntegerField(default=0)  # جديد
     account_locked_until = models.DateTimeField(null=True, blank=True)  # جديد
     objects = CustomUserManager()
+    payment_status = models.CharField(
+            max_length=20,
+            choices=[('unpaid', 'Unpaid'), ('paid', 'Paid')],
+            default='unpaid'
+        )
+    
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['full_name', 'user_type', 'phone']
