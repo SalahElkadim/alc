@@ -10,11 +10,12 @@ from .views import (
     user_invoices_view,
     moyasar_webhook,
     display_invoice_view,
-    test_callback_view
+    test_callback_view,payment_page
 )
 
 urlpatterns = [
     path("create/", CreatePaymentView.as_view(), name="create-payment"),
+    path("pay/", payment_page, name="payment_page"),
     path('fetch/<str:moyasar_id>/', fetch_payment_view, name='fetch-payment'),
     path('list/', ListPaymentsView.as_view(), name='list-payments'),
     path("refund/<str:moyasar_id>/", refund_payment_view, name="refund-payment"),
