@@ -27,14 +27,18 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 
 
+
 def payment_page(request):
-    """
-    عرض صفحة الدفع
-    """
-    amount = request.GET.get('amount', 10000)  # السماح بتمرير المبلغ من الـ query params
-    
+    token = request.GET.get("token")
+    amount = request.GET.get("amount", 10000)
+
+    if not token:
+        return render(request, "error.html", {"message": "Missing access token"})
+
     return render(request, "payment.html", {
-        "amount": amount
+        "publishable_key": settings.MOYASAR_PUBLISHABLE_KEY,
+        "amount": amount,
+        "access_token": token,
     })
 
 
@@ -59,8 +63,7 @@ class CreatePaymentView(APIView):
             description = data.get("description", "Payment")
 
             # ✅ استخدام user ID كـ given_id
-            given_id = f"user-{request.user.id}-{str(uuid.uuid4())[:8]}"
-
+            given_id = f"{str(uuid.uuid4())}"
             payment_response, status_code = create_payment(
                 given_id=given_id,
                 amount=amount,
@@ -255,27 +258,35 @@ def verify_webhook_signature(payload, signature):
 
 def handle_payment_paid(payment_data):
     """
-    معالجة حدث الدفع المكتمل
+    تحديث حالة الدفع في النظام بعد تأكيد الدفع من ميسر
     """
-    moyasar_id = payment_data.get('id')
-    
     try:
-        with transaction.atomic():
-            payment = Payment.objects.get(moyasar_id=moyasar_id)
-            payment.status = 'paid'
-            payment.amount = payment_data.get('amount', payment.amount)
-            payment.paid_at = timezone.now()
-            payment.save()
+        moyasar_id = payment_data.get("id")
+        if not moyasar_id:
+            logger.error("❌ Payment data missing 'id'")
+            return
 
-            # تحديث الفاتورة
-            update_invoice_on_payment_success(payment)
-            
-            logger.info(f"Payment {moyasar_id} marked as paid via webhook")
-            
-    except Payment.DoesNotExist:
-        logger.warning(f"Payment {moyasar_id} not found in database")
+        # نحاول نجيب الدفع من قاعدة البيانات
+        payment = Payment.objects.filter(moyasar_id=moyasar_id).first()
+        if not payment:
+            logger.warning(f"⚠️ Payment with id {moyasar_id} not found in DB")
+            return
+
+        # نحدّث حالة الدفع
+        payment.status = "paid"
+        payment.paid_at = timezone.now()
+        payment.save()
+
+        # ✅ نربطها بالمستخدم ونحدّث حالته
+        user = payment.user
+        if user.payment_status != "paid":
+            user.payment_status = "paid"
+            user.save(update_fields=["payment_status"])
+            logger.info(f"✅ User {user.email} marked as paid")
+
     except Exception as e:
-        logger.error(f"Error handling payment_paid webhook: {str(e)}")
+        logger.error(f"❌ Error in handle_payment_paid: {str(e)}")
+
 
 
 def handle_payment_failed(payment_data):

@@ -19,6 +19,11 @@ class Payment(models.Model):
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default="initiated")
     currency = models.CharField(max_length=10, default="SAR")
     description = models.TextField(blank=True, null=True)
+    payment_status = models.CharField(
+        max_length=20,
+        choices=[('unpaid', 'Unpaid'), ('paid', 'Paid')],
+        default='unpaid'
+    )
     
     # تواريخ مهمة
     created_at = models.DateTimeField(auto_now_add=True)
@@ -51,6 +56,7 @@ class Payment(models.Model):
             self.status = 'paid'
             self.paid_at = timezone.now()
             self.save()
+    
 
 
 class Invoice(models.Model):

@@ -9,102 +9,106 @@
   <!-- Moyasar SDK -->
   <script src="https://cdn.moyasar.com/mpf/1.7.3/moyasar.js"></script>
 
-  <!-- الخطوط والتصميم -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+    :root {
+      --primary: #0070f3;
+      --accent: #00a8a8;
+      --bg: #f9fafc;
+      --card-bg: #fff;
+      --danger: #e63946;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Cairo', sans-serif;
+      direction: rtl;
+    }
 
     body {
-      font-family: 'Tajawal', sans-serif;
-      background: linear-gradient(135deg, #f8f3ef 0%, #f1e3d3 100%);
-      color: #4b3b2b;
-      text-align: center;
-      padding: 60px 20px;
-      direction: rtl;
-      min-height: 100vh;
+      margin: 0;
+      background: var(--bg);
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .payment-container {
+      background: var(--card-bg);
+      width: 420px;
+      padding: 2rem 2.5rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .payment-container h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #222;
+    }
+
+    .payment-container p {
+      color: #555;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .mysr-form {
+      margin-top: 1rem;
+    }
+
+    .error-message {
+      display: none;
+      background-color: var(--danger);
+      color: #fff;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(3px);
+      z-index: 999;
       align-items: center;
       justify-content: center;
     }
 
-    h2 {
-      font-size: 28px;
-      font-weight: 700;
-      color: #3e2f23;
-      margin-bottom: 10px;
+    .loading-overlay.active {
+      display: flex;
     }
 
-    p {
-      font-size: 17px;
-      margin-bottom: 30px;
-      color: #6d5b4c;
-    }
-
-    .mysr-form {
-      background: #fff;
-      border-radius: 20px;
-      padding: 35px 30px;
-      width: 420px;
-      max-width: 100%;
-      margin: 0 auto;
-      box-shadow: 0 8px 30px rgba(78, 57, 39, 0.15);
-      border: 1px solid rgba(229, 214, 196, 0.5);
-      transition: all 0.3s ease;
-    }
-
-    .mysr-form:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 45px rgba(78, 57, 39, 0.25);
-    }
-
-    /* شاشة التحميل */
-    body.loading::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: rgba(255, 255, 255, 0.8);
-      z-index: 9998;
-      backdrop-filter: blur(3px);
-    }
-
-    body.loading::after {
-      content: '';
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 60px;
-      height: 60px;
-      border: 6px solid rgba(139, 94, 52, 0.2);
-      border-top-color: #8b5e34;
+    .spinner {
+      border: 4px solid #ccc;
+      border-top: 4px solid var(--primary);
       border-radius: 50%;
+      width: 45px;
+      height: 45px;
       animation: spin 1s linear infinite;
-      z-index: 9999;
     }
 
     @keyframes spin {
-      to {
-        transform: translate(-50%, -50%) rotate(360deg);
-      }
+      to { transform: rotate(360deg); }
     }
 
-    .error-message {
-      background: #fee;
-      color: #c33;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px 0;
-      display: none;
+    footer {
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: #888;
     }
 
     @media (max-width: 480px) {
-      body {
-        padding: 20px;
-      }
-
-      .mysr-form {
-        width: 100%;
-        padding: 25px;
+      .payment-container {
+        width: 90%;
+        padding: 1.5rem;
       }
     }
   </style>
@@ -120,24 +124,23 @@
   <div class="mysr-form"></div>
 
   <script>
-    // ✅ تهيئة فورم ميسر
+    const accessToken = "{{ access_token }}"; // ✅ جاي من Django (مرسل من Flutter)
+
     Moyasar.init({
       element: '.mysr-form',
       amount: {{ amount }}, // بالهللة (مثلاً 10000 = 100 ريال)
       currency: 'SAR',
       description: 'دفع استشارة لغوية',
       publishable_api_key: 'pk_live_AUPkqG63z5VEJ6XRKMS2fuUtpB3k5LVgyXTER5TE',
-      callback_url:  "https://alc-production-5d34.up.railway.app/payment/callback/",
+      callback_url: "https://alc-production-5d34.up.railway.app/payment/callback/",
       supported_networks: ['visa', 'mastercard', 'mada'],
       methods: ['creditcard'],
 
-      // ✅ عند إنشاء التوكن بنجاح
       on_completed: function (payment) {
         console.log("✅ Token received:", payment.source.token);
         sendTokenToServer(payment.source.token);
       },
 
-      // ❌ عند الفشل
       on_failed: function (error) {
         showError("حدث خطأ أثناء إنشاء التوكن: " + error.message);
       }
@@ -151,26 +154,13 @@
         source: { token: token }
       };
 
-      // تفعيل حالة التحميل
       document.body.classList.add('loading');
-
-      // ✅ الحصول على الـ JWT access token من localStorage
-      const accessToken = localStorage.getItem('access_token');
-      
-      if (!accessToken) {
-        document.body.classList.remove('loading');
-        showError("يجب تسجيل الدخول أولاً");
-        setTimeout(() => {
-          window.location.href = "/login/";  // غيّر الـ URL حسب صفحة اللوجن عندك
-        }, 2000);
-        return;
-      }
 
       fetch("{% url 'create-payment' %}", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + accessToken  // ✅ JWT Token
+          "Authorization": "Bearer " + accessToken // ✅ JWT Token جاي من Flutter
         },
         body: JSON.stringify(data)
       })
@@ -184,59 +174,34 @@
         console.log("📦 Server response:", response);
         document.body.classList.remove('loading');
 
-        // ✅ لو محتاج 3DS redirect
         if (response.status === "initiated" && response.transaction_url) {
           window.location.href = response.transaction_url;
-        }
-        // ✅ لو الدفع تم
-        else if (response.status === "paid") {
+        } else if (response.status === "paid") {
           window.location.href = "/payment/callback/?status=paid&id=" + response.moyasar_data.id;
-        }
-        // ❌ لو فشل
-        else {
+        } else {
           showError("فشل الدفع: " + (response.message || "حدث خطأ غير متوقع"));
         }
       })
       .catch(err => {
         document.body.classList.remove('loading');
         console.error("❌ Error:", err);
-        
-        // ✅ لو الـ token expired أو invalid
+
         if (err.detail && err.detail.includes('Authentication')) {
-          showError("جلسة العمل انتهت. سيتم تحويلك لصفحة تسجيل الدخول...");
-          setTimeout(() => {
-            window.location.href = "/login/";
-          }, 2000);
+          showError("جلسة العمل انتهت. يرجى إعادة المحاولة.");
         } else {
           showError(err.error || err.message || "حدث خطأ أثناء إرسال الدفع للسيرفر.");
         }
       });
     }
 
-    // 🧩 دالة جلب CSRF من الكوكيز (غير مستخدمة مع JWT)
-    function getCSRFToken() {
-      const name = 'csrftoken';
-      const cookies = document.cookie.split(';');
-      for (let cookie of cookies) {
-        cookie = cookie.trim();
-        if (cookie.startsWith(name + '=')) {
-          return cookie.substring(name.length + 1);
-        }
-      }
-      return '';
-    }
-
-    // ✅ عرض رسالة خطأ
     function showError(message) {
       const errorDiv = document.getElementById('errorMessage');
+      if (!errorDiv) return alert(message);
       errorDiv.textContent = message;
       errorDiv.style.display = 'block';
-      
-      // إخفاء الرسالة بعد 5 ثوان
-      setTimeout(() => {
-        errorDiv.style.display = 'none';
-      }, 5000);
+      setTimeout(() => errorDiv.style.display = 'none', 5000);
     }
   </script>
+
 </body>
 </html>
