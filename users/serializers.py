@@ -120,7 +120,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'email', 'full_name', 'phone', 'user_type', 'is_email_verified', 'date_joined','payment_status']
-        read_only_fields = ['id', 'email', 'user_type', 'date_joined']
+        read_only_fields = ['id', 'email', 'user_type', 'date_joined','payment_status']
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
