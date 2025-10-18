@@ -39,9 +39,10 @@ class CheckValueView(APIView):
 
         # شرط بسيط كمثال (تقدر تغيره زي ما تحب)
         if value == "hello":
-            return Response({"result": True})
-        else:
             return Response({"result": False})
+        else:
+            return Response({"result": True})
+            
 
 
 
