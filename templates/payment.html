@@ -13,169 +13,248 @@
   <script src="https://cdn.moyasar.com/mpf/1.7.3/moyasar.js"></script>
 
   <style>
-    :root {
-      --main-blue: #007BFF;
-      --light-blue: #e8f1ff;
-      --text-dark: #222;
-      --error-red: #d9534f;
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
     body {
       font-family: "Tajawal", sans-serif;
-      background-color: var(--light-blue);
-      color: var(--text-dark);
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .payment-container {
-      background-color: #fff;
-      border-radius: 20px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      padding: 40px;
-      width: 90%;
-      max-width: 450px;
+      background: linear-gradient(135deg, #f0f4ff 0%, #e3eaff 100%);
+      color: #1e3a5f;
       text-align: center;
+      padding: 60px 20px;
+      direction: rtl;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
     h2 {
-      color: var(--main-blue);
-      margin-bottom: 10px;
+      font-size: 32px;
       font-weight: 700;
-      font-size: 1.6rem;
+      color: #1e3a5f;
+      margin-bottom: 12px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     p {
-      color: #555;
-      font-size: 1rem;
-      margin-bottom: 25px;
+      color: #4a5f7f;
+      font-size: 17px;
+      margin-bottom: 40px;
+      line-height: 1.6;
     }
 
+    /* ✅ حاوية فورم ميسر */
     .mysr-form {
-      margin-top: 20px;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 35px 30px;
+      width: 420px;
+      max-width: 100%;
+      margin: 0 auto;
+      box-shadow: 0 10px 40px rgba(30, 58, 95, 0.12);
+      border: 1px solid rgba(200, 215, 235, 0.5);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .error-message {
-      display: none;
-      color: var(--error-red);
-      background-color: #ffe6e6;
-      padding: 10px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-      font-size: 0.95rem;
+    .mysr-form:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 50px rgba(30, 58, 95, 0.2);
+      border-color: #b8cce5;
     }
 
-    /* حالة التحميل */
-    body.loading::after {
-      content: "جاري معالجة الدفع...";
+     .mysr-form input[type="text"],
+    .mysr-form input[type="tel"],
+    .mysr-form input[type="email"],
+    .mysr-form input[type="number"],
+    .mysr-form select,
+    .mysr-form-input,
+    #mysr-cc-name,
+    #mysr-cc-number,
+    #mysr-cc-month,
+    #mysr-cc-year,
+    #mysr-cc-cvc {
+      width: 100% !important;
+      padding: 14px 18px !important;
+      font-size: 16px !important;
+      font-family: "Tajawal", sans-serif !important;
+      color: #1e3a5f !important;
+      background: #f8faff !important;
+      border: 2px solid #d4e1f5 !important;
+      border-radius: 6px !important;
+      transition: all 0.3s ease !important;
+      outline: none !important;
+      margin-bottom: 16px !important;
+      box-sizing: border-box !important;
+    }
+    .mysr-form input:focus,
+    .mysr-form select:focus {
+      background: #ffffff !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+      transform: translateY(-2px);
+    }
+
+    .mysr-form label {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e3a5f;
+      margin-bottom: 8px;
+      text-align: right;
+      padding-right: 4px;
+    }
+
+    /* زرار الدفع */
+    .mysr-form button,
+    .mysr-form input[type="submit"] {
+      width: 100%;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+      color: #fff !important;
+      font-size: 18px !important;
+      font-weight: 700 !important;
+      border: none !important;
+      border-radius: 6px !important;
+      padding: 16px 24px !important;
+      cursor: pointer !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3) !important;
+      margin-top: 10px !important;
+    }
+
+    .mysr-form button:hover,
+    .mysr-form input[type="submit"]:hover {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+      transform: translateY(-3px) !important;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4) !important;
+    }
+
+    .mysr-form button:active,
+    .mysr-form input[type="submit"]:active {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
+    }
+
+    /* تحميل */
+    body.loading {
+      pointer-events: none;
+      position: relative;
+    }
+
+    body.loading::before {
+      content: "";
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-color: rgba(255, 255, 255, 0.8);
-      color: var(--main-blue);
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(240, 244, 255, 0.95);
+      z-index: 9998;
+      backdrop-filter: blur(4px);
+    }
+
+    body.loading::after {
+      content: "";
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      border: 5px solid rgba(37, 99, 235, 0.2);
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 9999;
+    }
+
+    .loading-text {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, calc(-50% + 60px));
+      font-size: 18px;
+      font-weight: 600;
+      color: #1d4ed8;
+      z-index: 9999;
+      animation: pulse 1.5s ease-in-out infinite;
+      display: none;
+    }
+
+    body.loading .loading-text {
+      display: block;
+    }
+
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    /* شعارات الدفع */
+    .payment-logos {
       display: flex;
       justify-content: center;
       align-items: center;
-      font-size: 1.3rem;
-      font-weight: bold;
-      z-index: 1000;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #d4e1f5;
+      opacity: 0.7;
     }
 
-    /* أزرار ميسر */
-    .mysr-form iframe {
-      border-radius: 10px;
-      border: 1px solid #ccc;
-    }
-    /* تنسيق حقول ميسر */
-    .mysr-form iframe {
-      border-radius: 10px;
-      border: 1px solid #ccc;
+    .payment-logos span {
+      font-size: 13px;
+      color: #4a5f7f;
+      font-weight: 500;
     }
 
-    /* تنسيق الحقول داخل Moyasar */
-    .mysr-form {
-      direction: rtl;
-    }
+    /* تنسيق عام للموبايل */
+    @media (max-width: 480px) {
+      body {
+        padding: 30px 15px;
+      }
+      
+      h2 {
+        font-size: 26px;
+      }
 
-    /* تنسيق الحقول */
-    ::ng-deep .mysr-form input,
-    ::ng-deep .mysr-form .input-field {
-      font-family: "Tajawal", sans-serif !important;
-      font-size: 1rem !important;
-      padding: 14px !important;
-      border-radius: 10px !important;
-      border: 1px solid #ddd !important;
-      background-color: #f9f9f9 !important;
-      transition: all 0.3s ease !important;
-      text-align: right !important;
-    }
+      p {
+        font-size: 15px;
+      }
 
-    ::ng-deep .mysr-form input:focus,
-    ::ng-deep .mysr-form .input-field:focus {
-      border-color: var(--main-blue) !important;
-      background-color: #fff !important;
-      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
-      outline: none !important;
-    }
+      .mysr-form {
+        width: 100%;
+        padding: 28px 22px;
+        border-radius: 10px;
+      }
 
-    /* تنسيق زر الدفع */
-    ::ng-deep .mysr-form button[type="submit"],
-    ::ng-deep .mysr-form .submit-button {
-      background-color: var(--main-blue) !important;
-      color: white !important;
-      font-family: "Tajawal", sans-serif !important;
-      font-size: 1.1rem !important;
-      font-weight: 700 !important;
-      padding: 16px !important;
-      border-radius: 12px !important;
-      border: none !important;
-      cursor: pointer !important;
-      width: 100% !important;
-      margin-top: 20px !important;
-      transition: all 0.3s ease !important;
-      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2) !important;
-    }
+      .mysr-form input,
+      .mysr-form select {
+        padding: 12px 16px !important;
+        font-size: 15px !important;
+      }
 
-    ::ng-deep .mysr-form button[type="submit"]:hover,
-    ::ng-deep .mysr-form .submit-button:hover {
-      background-color: #0056b3 !important;
-      transform: translateY(-2px) !important;
-      box-shadow: 0 6px 16px rgba(0, 123, 255, 0.3) !important;
+      .mysr-form button,
+      .mysr-form input[type="submit"] {
+        padding: 14px 20px !important;
+        font-size: 17px !important;
+      }
     }
-
-    ::ng-deep .mysr-form button[type="submit"]:active,
-    ::ng-deep .mysr-form .submit-button:active {
-      transform: translateY(0) !important;
-    }
-
-    /* تنسيق الـ labels */
-    ::ng-deep .mysr-form label {
-      font-family: "Tajawal", sans-serif !important;
-      font-size: 0.95rem !important;
-      color: #555 !important;
-      font-weight: 500 !important;
-      margin-bottom: 8px !important;
-      display: block !important;
-      text-align: right !important;
-    }
-
-    /* تنسيق رسائل الخطأ */
-    ::ng-deep .mysr-form .error-message {
-      color: var(--error-red) !important;
-      font-size: 0.9rem !important;
-      margin-top: 5px !important;
-      text-align: right !important;
-      font-family: "Tajawal", sans-serif !important;
-    }
+    
   </style>
 </head>
 
 <body>
-  <div class="payment-container">
     <h2>إتمام عملية الدفع</h2>
     <p>يرجى إدخال بيانات البطاقة لإتمام عملية الدفع بأمان.</p>
 
@@ -183,7 +262,6 @@
 
     <!-- ✅ نموذج ميسر -->
     <div class="mysr-form"></div>
-  </div>
 
   <script>
     const accessToken = "{{ access_token }}"; // ✅ جاي من Django (مرسل من Flutter)
