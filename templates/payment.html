@@ -90,6 +90,87 @@
       border-radius: 10px;
       border: 1px solid #ccc;
     }
+    /* تنسيق حقول ميسر */
+    .mysr-form iframe {
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+
+    /* تنسيق الحقول داخل Moyasar */
+    .mysr-form {
+      direction: rtl;
+    }
+
+    /* تنسيق الحقول */
+    ::ng-deep .mysr-form input,
+    ::ng-deep .mysr-form .input-field {
+      font-family: "Tajawal", sans-serif !important;
+      font-size: 1rem !important;
+      padding: 14px !important;
+      border-radius: 10px !important;
+      border: 1px solid #ddd !important;
+      background-color: #f9f9f9 !important;
+      transition: all 0.3s ease !important;
+      text-align: right !important;
+    }
+
+    ::ng-deep .mysr-form input:focus,
+    ::ng-deep .mysr-form .input-field:focus {
+      border-color: var(--main-blue) !important;
+      background-color: #fff !important;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+      outline: none !important;
+    }
+
+    /* تنسيق زر الدفع */
+    ::ng-deep .mysr-form button[type="submit"],
+    ::ng-deep .mysr-form .submit-button {
+      background-color: var(--main-blue) !important;
+      color: white !important;
+      font-family: "Tajawal", sans-serif !important;
+      font-size: 1.1rem !important;
+      font-weight: 700 !important;
+      padding: 16px !important;
+      border-radius: 12px !important;
+      border: none !important;
+      cursor: pointer !important;
+      width: 100% !important;
+      margin-top: 20px !important;
+      transition: all 0.3s ease !important;
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2) !important;
+    }
+
+    ::ng-deep .mysr-form button[type="submit"]:hover,
+    ::ng-deep .mysr-form .submit-button:hover {
+      background-color: #0056b3 !important;
+      transform: translateY(-2px) !important;
+      box-shadow: 0 6px 16px rgba(0, 123, 255, 0.3) !important;
+    }
+
+    ::ng-deep .mysr-form button[type="submit"]:active,
+    ::ng-deep .mysr-form .submit-button:active {
+      transform: translateY(0) !important;
+    }
+
+    /* تنسيق الـ labels */
+    ::ng-deep .mysr-form label {
+      font-family: "Tajawal", sans-serif !important;
+      font-size: 0.95rem !important;
+      color: #555 !important;
+      font-weight: 500 !important;
+      margin-bottom: 8px !important;
+      display: block !important;
+      text-align: right !important;
+    }
+
+    /* تنسيق رسائل الخطأ */
+    ::ng-deep .mysr-form .error-message {
+      color: var(--error-red) !important;
+      font-size: 0.9rem !important;
+      margin-top: 5px !important;
+      text-align: right !important;
+      font-family: "Tajawal", sans-serif !important;
+    }
   </style>
 </head>
 
