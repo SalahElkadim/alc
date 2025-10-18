@@ -1,15 +1,17 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>إتمام الدفع | ALC</title>
 
+  <!-- خط Tajawal -->
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 
   <!-- Moyasar SDK -->
   <script src="https://cdn.moyasar.com/mpf/1.7.3/moyasar.js"></script>
+
   <style>
     :root {
       --main-blue: #007BFF;
@@ -92,13 +94,15 @@
 </head>
 
 <body>
-  <h2>إتمام عملية الدفع</h2>
-  <p>يرجى إدخال بيانات البطاقة لإتمام عملية الدفع.</p>
+  <div class="payment-container">
+    <h2>إتمام عملية الدفع</h2>
+    <p>يرجى إدخال بيانات البطاقة لإتمام عملية الدفع بأمان.</p>
 
-  <div class="error-message" id="errorMessage"></div>
+    <div class="error-message" id="errorMessage"></div>
 
-  <!-- ✅ نموذج ميسر -->
-  <div class="mysr-form"></div>
+    <!-- ✅ نموذج ميسر -->
+    <div class="mysr-form"></div>
+  </div>
 
   <script>
     const accessToken = "{{ access_token }}"; // ✅ جاي من Django (مرسل من Flutter)
@@ -137,19 +141,17 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + accessToken // ✅ JWT Token جاي من Flutter
+          "Authorization": "Bearer " + accessToken
         },
         body: JSON.stringify(data)
       })
       .then(res => {
-        if (!res.ok) {
-          return res.json().then(err => Promise.reject(err));
-        }
+        if (!res.ok) return res.json().then(err => Promise.reject(err));
         return res.json();
       })
       .then(response => {
-        console.log("📦 Server response:", response);
         document.body.classList.remove('loading');
+        console.log("📦 Server response:", response);
 
         if (response.status === "initiated" && response.transaction_url) {
           window.location.href = response.transaction_url;
@@ -179,6 +181,5 @@
       setTimeout(() => errorDiv.style.display = 'none', 5000);
     }
   </script>
-
 </body>
 </html>
