@@ -17,8 +17,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY="django-insecure-3#-m1uyln4jei7me&3=*+ued3w403@(72wxzg#$2@o_s@so_7l"
-# JWT
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
@@ -136,10 +136,10 @@ CORS_ALLOW_CREDENTIALS = True
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.parse(
-"postgresql://postgres:tHTpzmhrKmjpBODZffagOQKAVwzBYLBE@hopper.proxy.rlwy.net:17588/railway",
+    "default": dj_database_url.parse(
+        os.getenv("DATABASE_URL"),
         conn_max_age=600,
-        engine='django.db.backends.postgresql_psycopg2'
+        engine="django.db.backends.postgresql_psycopg2",
     )
 }
 
@@ -219,13 +219,13 @@ class Command(BaseCommand):
         
         self.stdout.write(f'Cleaned {count} expired sessions')
 
-MOYASAR_WEBHOOK_SECRET = "ms_webhook_4x8dK2Q9LzT7P1nV"
-MOYASAR_SECRET_KEY = "sk_live_Kv99pG1WCswpafrzbfpGH9E1w1YucyixxfcnKDLM"
-MOYASAR_PUBLISHABLE_KEY = "pk_live_fKVM1h6efFnnvHcCz34HWaRFUMwuUBuXBs1qTYxk"
+MOYASAR_WEBHOOK_SECRET = os.getenv("MOYASAR_WEBHOOK_SECRET")
+MOYASAR_SECRET_KEY = os.getenv("MOYASAR_SECRET_KEY")
+MOYASAR_PUBLISHABLE_KEY = os.getenv("MOYASAR_PUBLISHABLE_KEY")
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
 MOYASAR_API_URL = "https://api.moyasar.com/v1/payments"
 
-DEBUG=True
+#DEBUG=True
 #DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
