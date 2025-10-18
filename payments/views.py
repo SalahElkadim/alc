@@ -26,6 +26,24 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
+class CheckValueView(APIView):
+    """
+    Endpoint يستقبل JWT في الهيدر + قيمة في البادي،
+    ويرجع True أو False بناءً على شرط بسيط.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # نقرأ القيمة من البادي
+        value = request.data.get("value")
+
+        # شرط بسيط كمثال (تقدر تغيره زي ما تحب)
+        if value == "hello":
+            return Response({"result": True})
+        else:
+            return Response({"result": False})
+
+
 
 
 def payment_page(request):
