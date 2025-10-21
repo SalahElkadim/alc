@@ -10,9 +10,8 @@ urlpatterns = [
     path('', dashboard, name='dashboard'),
     # Books
     path('books/', BookView.as_view(), name='book-list-create'),
-    path('books/<int:pk>/', BookDetailView.as_view(), name='book-detail'),
-    path('books/<int:book_id>/questions/', BookQuestionsView.as_view(), name='book-questions'),
-    
+    path('books/<uuid:book_id>/', BookDetailView.as_view(), name='book-detail'),
+    path('books/<uuid:book_id>/questions/', BookQuestionsView.as_view(), name='book-questions'),    
     # MCQ
     path('mcq-questions/', MCQQuestionView.as_view(), name='mcq-question-list'),
     path('mcq-questions/<int:pk>/', MCQQuestionDetailView.as_view(), name='mcq-question-detail'),
