@@ -5,7 +5,7 @@ from rest_framework.generics import get_object_or_404
 from django.shortcuts import render
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status, permissions
-
+from users.models import UserBook
 from .models import (
     Book, MCQQuestion, MCQChoice,
     MatchingQuestion, MatchingPair,
@@ -29,15 +29,31 @@ class BookView(APIView):
     List all books or create a new book
     """
     authentication_classes = [JWTAuthentication]
+
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [permissions.AllowAny()]  # مفتوح للجميع
-        return [permissions.IsAdminUser()]   # POST للأدمن فقط
-    
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+
     def get(self, request):
         books = Book.objects.all()
         serializer = BookSerializer(books, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        books_data = serializer.data
+
+        # 🔥 لو المستخدم مسجل دخوله، نضيف حالة كل كتاب (مفتوح/مقفول)
+        if request.user.is_authenticated:
+            open_books = UserBook.objects.filter(
+                user=request.user, status='unlocked'
+            ).values_list('book_id', flat=True)
+
+            for book in books_data:
+                book['is_unlocked'] = str(book['id']) in [str(bid) for bid in open_books]
+
+        else:
+            for book in books_data:
+                book['is_unlocked'] = False  # زائر فقط
+
+        return Response(books_data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = BookSerializer(data=request.data)
@@ -48,7 +64,10 @@ class BookView(APIView):
 
 
 class BookDetailView(APIView):
-    permission_classes = [permissions.IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]  # الكل يقدر يشوف التفاصيل
+        return [permissions.IsAdminUser()] 
     authentication_classes = [JWTAuthentication]
     def get_object(self, pk):
         try:

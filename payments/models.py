@@ -1,5 +1,4 @@
 from django.db import models
-from users.models import CustomUser
 from django.utils import timezone
 
 
@@ -12,21 +11,18 @@ class Payment(models.Model):
         ('refunded', 'Refunded'),
         ('canceled', 'Canceled'),
     ]
-    
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="payments")
-    moyasar_id = models.CharField(max_length=100, unique=True)  # id اللي جاي من ميسر
-    amount = models.IntegerField()  # المبلغ بالهللة
+    user = models.ForeignKey("users.CustomUser", on_delete=models.CASCADE, related_name="user_payments")
+    book = models.ForeignKey('questions.Book', on_delete=models.CASCADE, related_name="book_payments")
+    moyasar_id = models.CharField(max_length=100, unique=True)
+    amount = models.IntegerField()
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default="initiated")
     currency = models.CharField(max_length=10, default="SAR")
     description = models.TextField(blank=True, null=True)
-    # تواريخ مهمة
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     paid_at = models.DateTimeField(blank=True, null=True)
-    
-    # معلومات إضافية من Moyasar
-    moyasar_fee = models.IntegerField(blank=True, null=True)  # رسوم ميسر
-    source_type = models.CharField(max_length=50, blank=True, null=True)  # نوع مصدر الدفع
+    moyasar_fee = models.IntegerField(blank=True, null=True)
+    source_type = models.CharField(max_length=50, blank=True, null=True)
     
     class Meta:
         ordering = ['-created_at']
@@ -37,20 +33,7 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"Payment {self.moyasar_id} - {self.status}"
-
-    @property
-    def amount_in_sar(self):
-        """المبلغ بالريال السعودي"""
-        return self.amount / 100
-
-    def mark_as_paid(self):
-        """تحديد الدفعة كمدفوعة"""
-        if self.status != 'paid':
-            self.status = 'paid'
-            self.paid_at = timezone.now()
-            self.save()
-    
+        return f"{self.user.email} - {self.book.title} - {self.status}"
 
 
 class Invoice(models.Model):

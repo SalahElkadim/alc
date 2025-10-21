@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 import uuid
 from datetime import timedelta
-
+from questions.models import Book
 
 # مدير المستخدمين (User Manager)
 class CustomUserManager(BaseUserManager):
@@ -67,6 +67,26 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def allows_multiple_devices(self):
         """تحديد ما إذا كان المستخدم يمكنه الدخول من أجهزة متعددة"""
         return self.user_type == 'admin'
+
+
+class UserBook(models.Model):
+    STATUS_CHOICES = [
+        ('locked', 'Locked'),
+        ('unlocked', 'Unlocked'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user_books")
+    book = models.ForeignKey('questions.Book', on_delete=models.CASCADE, related_name="book_users", null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='locked')
+    payment = models.OneToOneField('payments.Payment', on_delete=models.SET_NULL, null=True, blank=True, related_name="user_book")
+
+    class Meta:
+        unique_together = ('user', 'book')  # كل مستخدم له كتاب واحد فقط من هذا النوع
+
+    def __str__(self):
+        return f"{self.user.email} - {self.book.title} ({self.status})"
+
+
 
 class UserSession(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sessions')

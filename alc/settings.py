@@ -104,11 +104,10 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "https://alc-production-5d34.up.railway.app",
     "http://localhost:3000",   
-    "https://alcreactapp-production.up.railway.app/"
+    "https://alcreactapp-production.up.railway.app"
 ]
 AUTH_USER_MODEL = 'users.CustomUser'
 ROOT_URLCONF = 'alc.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

@@ -20,7 +20,8 @@ import json
 import logging
 from decimal import Decimal
 from django.db import transaction
-
+from users.models import UserBook
+from questions.models import Book
 
 
 
@@ -60,82 +61,107 @@ def payment_page(request):
         "access_token": token,
     })
 
-
 class CreatePaymentView(APIView):
     """
-    إنشاء عملية دفع باستخدام Tokenization (ميسر)
+    إنشاء عملية دفع جديدة لكتاب محدد باستخدام Tokenization (ميسر)
     """
     permission_classes = [IsAuthenticated]  # ✅ JWT Authentication مطلوب
 
     def post(self, request):
         try:
             data = request.data
+            user = request.user
+
+            # 1️⃣ تحقق من وجود الـ token والـ book_id
             token = data.get("source", {}).get("token")
+            book_id = data.get("book_id")
 
             if not token:
-                return Response({
-                    "success": False, 
-                    "error": "Token is required"
-                }, status=400)
+                return Response({"success": False, "error": "Token is required"}, status=400)
 
-            amount = data.get("amount", 10000)
-            description = data.get("description", "Payment")
+            if not book_id:
+                return Response({"success": False, "error": "book_id is required"}, status=400)
 
-            # ✅ استخدام user ID كـ given_id
+            # 2️⃣ نحاول نجيب الكتاب
+            book = get_object_or_404(Book, id=book_id)
+
+            # 3️⃣ نحدد المبلغ بالهللة (من سعر الكتاب)
+            amount_halalah = int(book.price_sar * 100)
+            description = f"Unlock book: {book.title}"
+
+            # 4️⃣ إنشاء عملية دفع في ميسر
             given_id = f"{str(uuid.uuid4())}"
             payment_response, status_code = create_payment(
                 given_id=given_id,
-                amount=amount,
+                amount=amount_halalah,
                 currency="SAR",
                 description=description,
                 token=token,
                 metadata={
-                    "username": request.user.email,
-                    "user_id": str(request.user.id)
+                    "username": user.email,
+                    "user_id": str(user.id),
+                    "book_id": str(book.id),
                 }
             )
 
             logger.info(f"📩 Moyasar Response: {payment_response}")
 
-            # حفظ الدفع في قاعدة البيانات
+            # 5️⃣ حفظ الدفع في قاعدة البيانات
             if "id" in payment_response:
-                payment, _ = Payment.objects.get_or_create(
+                payment, created = Payment.objects.get_or_create(
                     moyasar_id=payment_response["id"],
                     defaults={
-                        "amount": payment_response["amount"],
-                        "status": payment_response["status"],
-                        "description": payment_response.get("description", ""),
+                        "user": user,
+                        "book": book,
+                        "amount": amount_halalah,
+                        "status": payment_response.get("status", "initiated"),
+                        "description": description,
                     },
                 )
 
-                # إنشاء فاتورة
+                # لو الدفع اتعمل بالفعل قبل كده (نادرًا)
+                if not created:
+                    payment.book = book
+                    payment.user = user
+                    payment.amount = amount_halalah
+                    payment.description = description
+                    payment.status = payment_response.get("status", payment.status)
+                    payment.save()
+
+                # 6️⃣ إنشاء الفاتورة
                 self.create_invoice(payment, description)
 
+            # 7️⃣ التعامل مع الحالة
             status = payment_response.get("status")
+            moyasar_source = payment_response.get("source", {})
 
-            # معالجة الحالات المختلفة
             if status == "initiated":
                 return Response({
                     "status": "initiated",
-                    "transaction_url": payment_response["source"].get("transaction_url"),
-                    "moyasar_data": payment_response
+                    "transaction_url": moyasar_source.get("transaction_url"),
+                    "book": {"id": str(book.id), "title": book.title},
+                    "moyasar_data": payment_response,
                 })
             elif status == "paid":
+                # 🔓 فك الكتاب مباشرة إذا الدفع تم بنجاح لحظيًا
+                unlock_user_book(payment)
                 return Response({
                     "status": "paid",
-                    "moyasar_data": payment_response
+                    "message": "Book unlocked successfully",
+                    "book": {"id": str(book.id), "title": book.title},
+                    "moyasar_data": payment_response,
                 })
             else:
                 return Response({
                     "status": status,
                     "message": payment_response.get("message", "Unknown status"),
-                    "moyasar_data": payment_response
+                    "moyasar_data": payment_response,
                 }, status=400)
 
         except Exception as e:
             logger.error(f"❌ Error in CreatePaymentView: {e}", exc_info=True)
             return Response({
-                "success": False, 
+                "success": False,
                 "error": str(e)
             }, status=500)
 
@@ -274,38 +300,27 @@ def verify_webhook_signature(payload, signature):
         logger.error(f"Error verifying webhook signature: {str(e)}")
         return True  # نسمح بالمرور في حالة الخطأ
 
-
 def handle_payment_paid(payment_data):
-    """
-    تحديث حالة الدفع في النظام بعد تأكيد الدفع من ميسر
-    """
     try:
         moyasar_id = payment_data.get("id")
         if not moyasar_id:
             logger.error("❌ Payment data missing 'id'")
             return
 
-        # نحاول نجيب الدفع من قاعدة البيانات
-        payment = Payment.objects.filter(moyasar_id=moyasar_id).first()
+        payment = Payment.objects.filter(moyasar_id=moyasar_id).select_related('user', 'book').first()
         if not payment:
             logger.warning(f"⚠️ Payment with id {moyasar_id} not found in DB")
             return
 
-        # نحدّث حالة الدفع
         payment.status = "paid"
         payment.paid_at = timezone.now()
         payment.save()
 
-        # ✅ نربطها بالمستخدم ونحدّث حالته
-        user = payment.user
-        if user.payment_status != "paid":
-            user.payment_status = "paid"
-            user.save(update_fields=["payment_status"])
-            logger.info(f"✅ User {user.email} marked as paid")
+        # ✅ فك القفل عن الكتاب
+        unlock_user_book(payment)
 
     except Exception as e:
         logger.error(f"❌ Error in handle_payment_paid: {str(e)}")
-
 
 
 def handle_payment_failed(payment_data):
@@ -495,3 +510,32 @@ def test_callback_view(request):
     View بسيط لاختبار الـ callback
     """
     return HttpResponse("Callback test successful", status=200)
+
+
+@csrf_exempt
+def unlock_user_book(payment):
+    """
+    فك قفل الكتاب للمستخدم بعد الدفع الناجح
+    """
+    try:
+        user = payment.user
+        book = payment.book
+
+        if not user or not book:
+            logger.warning("⚠️ Missing user or book in payment")
+            return
+
+        user_book, created = UserBook.objects.update_or_create(
+            user=user,
+            book=book,
+            defaults={
+                "status": "unlocked",
+                "unlocked_at": timezone.now(),
+                "payment": payment
+            }
+        )
+
+        logger.info(f"✅ User {user.email} unlocked book {book.title} via payment {payment.moyasar_id}")
+
+    except Exception as e:
+        logger.error(f"❌ Error unlocking book for payment {payment.moyasar_id}: {str(e)}")
