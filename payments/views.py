@@ -51,14 +51,23 @@ class CheckValueView(APIView):
 def payment_page(request):
     token = request.GET.get("token")
     amount = request.GET.get("amount", 10000)
+    book_id = request.GET.get('book_id')
 
     if not token:
         return render(request, "error.html", {"message": "Missing access token"})
+
+    book = None
+    if book_id:
+        book = Book.objects.filter(id=book_id).first()
+        if book:
+            amount = int(book.price_sar * 100)  # تحويل لهللة
 
     return render(request, "payment.html", {
         "publishable_key": settings.MOYASAR_PUBLISHABLE_KEY,
         "amount": amount,
         "access_token": token,
+        'book_id': book_id,  # ✅ نمرر book_id للـ template
+        'book': book
     })
 
 class CreatePaymentView(APIView):

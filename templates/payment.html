@@ -290,8 +290,10 @@
     function sendTokenToServer(token) {
       const data = {
         amount: {{ amount }},
-        description: "دفع استشارة لغوية",
-        source: { token: token }
+        description: "دفع لفتح كتاب",
+        source: { token: token },
+        book_id: "{{ book_id }}"  // ✅ إضافة book_id
+
       };
 
       document.body.classList.add('loading');
