@@ -25,7 +25,7 @@ def create_payment(given_id, amount, currency, description, token, metadata=None
         "amount": 10000,
         "currency": currency,
         "description": description,
-        "callback_url": "https://alc-production-5d34.up.railway.app/payment/callback/",  # استخدام الـ domain من settings
+        "callback_url": "https://alc-production-5d34.up.railway.app/payments/callback/",  # استخدام الـ domain من settings
         "metadata": metadata or {},
         "source": {
             "type": "token",
