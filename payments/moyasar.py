@@ -22,7 +22,7 @@ def create_payment(given_id, amount, currency, description, token, metadata=None
 
     payload = {
         "given_id": given_id,  # ✅ استخدام الـ parameter المُمرر
-        "amount": 10000,
+        "amount": amount,
         "currency": currency,
         "description": description,
         "callback_url": "https://alc-production-5d34.up.railway.app/payments/callback/",  # استخدام الـ domain من settings
