@@ -317,7 +317,7 @@
         if (response.status === "initiated" && response.transaction_url) {
           window.location.href = response.transaction_url;
         } else if (response.status === "paid") {
-          window.location.href = "/payment/callback/?status=paid&id=" + response.moyasar_data.id;
+          window.location.href = "/payments/callback/?status=paid&id=" + response.moyasar_data.id;
         } else {
           showError("فشل الدفع: " + (response.message || "حدث خطأ غير متوقع"));
         }

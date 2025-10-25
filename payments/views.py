@@ -416,17 +416,11 @@ def payment_callback_view(request):
             except Payment.DoesNotExist:
                 logger.warning(f"Payment {moyasar_id} not found in callback")
 
-        if status == "paid" and payment:
-            return render(request, "payments/payment_success.html", {
+        return render(request, "payments/payment_success.html", {
                 "payment": payment,
                 "invoice": invoice,
             })
-        else:
-            return render(request, "payments/payment_failed.html", {
-                "payment": payment,
-                "status": status,
-                "moyasar_id": moyasar_id,
-            })
+        
 
     except Exception as e:
         logger.error(f"Error in payment_callback_view: {str(e)}")
