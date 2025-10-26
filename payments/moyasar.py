@@ -2,30 +2,22 @@ import requests
 import uuid
 from django.conf import settings
 import json
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 def create_payment(given_id, amount, currency, description, token, metadata=None):
     """
     إنشاء دفعة باستخدام Tokenization
-    
-    Args:
-        given_id: معرف فريد للدفعة (يمكن استخدامه لتتبع الطلب)
-        amount: المبلغ بالهللة (100 ريال = 10000 هللة)
-        currency: العملة (SAR)
-        description: وصف الدفعة
-        token: Token من Moyasar SDK
-        metadata: بيانات إضافية (اختيارية)
-    
-    Returns:
-        tuple: (response_json, status_code)
     """
     url = "https://api.moyasar.com/v1/payments"
 
     payload = {
-        "given_id": given_id,  # ✅ استخدام الـ parameter المُمرر
         "amount": amount,
         "currency": currency,
         "description": description,
-        "callback_url": "https://alc-production-5d34.up.railway.app/payments/callback/",  # استخدام الـ domain من settings
+        "callback_url": "https://alc-production-5d34.up.railway.app/payments/callback/",
         "metadata": metadata or {},
         "source": {
             "type": "token",
@@ -34,20 +26,30 @@ def create_payment(given_id, amount, currency, description, token, metadata=None
     }
 
     try:
+        logger.info(f"🚀 Sending payment to Moyasar: {json.dumps(payload, indent=2)}")
+        
         response = requests.post(
             url,
             auth=(settings.MOYASAR_SECRET_KEY, ""),
             json=payload,
-            timeout=30  # إضافة timeout لتجنب التعليق
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            timeout=30
         )
+        
+        logger.info(f"📥 Moyasar Response Status: {response.status_code}")
+        logger.info(f"📥 Moyasar Response Body: {response.text}")
+        
         return response.json(), response.status_code
     
     except requests.exceptions.RequestException as e:
+        logger.error(f"❌ Moyasar API Error: {e}", exc_info=True)
         return {
             "error": str(e),
             "message": "Failed to connect to Moyasar API"
         }, 500
-
 
 def fetch_payment(payment_id):
     url = f"https://api.moyasar.com/v1/payments/{payment_id}"
