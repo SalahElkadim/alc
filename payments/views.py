@@ -336,6 +336,33 @@ def verify_webhook_signature(payload, signature):
         return True
 
 
+def unlock_user_book(payment):
+    """
+    فك قفل الكتاب للمستخدم بعد الدفع الناجح
+    """
+    try:
+        user = payment.user
+        book = payment.book
+
+        if not user or not book:
+            logger.warning("⚠️ Missing user or book")
+            return
+
+        user_book, created = UserBook.objects.update_or_create(
+            user=user,
+            book=book,
+            defaults={
+                "status": "unlocked",
+                "unlocked_at": timezone.now(),
+                "payment": payment
+            }
+        )
+
+        logger.info(f"✅ User {user.email} unlocked {book.title}")
+
+    except Exception as e:
+        logger.error(f"❌ Error unlocking book: {str(e)}", exc_info=True)
+
 def handle_payment_paid(payment_data):
     try:
         moyasar_id = payment_data.get("id")
