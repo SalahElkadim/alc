@@ -4,7 +4,7 @@ from .models import Payment, Invoice
 
 class PaymentSerializer(serializers.ModelSerializer):
     amount_in_sar = serializers.ReadOnlyField()
-    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_name = serializers.CharField(source='user.email', read_only=True)
     
     class Meta:
         model = Payment

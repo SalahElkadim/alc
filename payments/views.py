@@ -157,7 +157,7 @@ class CreatePaymentView(APIView):
                     logger.warning(f"⚠️ Payment {moyasar_id} already exists, updated")
 
                 # 8️⃣ إنشاء الفاتورة
-                self.create_invoice(payment, description)
+                #self.create_invoice(payment, description)
 
                 logger.info(f"✅ Payment saved: {moyasar_id} - Status: {payment.status}")
 
