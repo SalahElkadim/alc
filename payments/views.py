@@ -343,24 +343,70 @@ def handle_payment_paid(payment_data):
             logger.error("❌ Payment data missing 'id'")
             return
 
+        logger.info(f"🔔 Webhook: payment_paid for {moyasar_id}")
+
+        # ✅ جلب البيانات من metadata
+        metadata = payment_data.get("metadata", {})
+        user_id = metadata.get("user_id")
+        book_id = metadata.get("book_id")
+
+        user = None
+        book = None
+
+        if user_id:
+            try:
+                from users.models import CustomUser
+                user = CustomUser.objects.get(id=user_id)
+            except Exception as e:
+                logger.warning(f"⚠️ User {user_id} not found: {e}")
+
+        if book_id:
+            try:
+                book = Book.objects.get(id=book_id)
+            except Exception as e:
+                logger.warning(f"⚠️ Book {book_id} not found: {e}")
+
         with transaction.atomic():
-            payment = Payment.objects.filter(moyasar_id=moyasar_id).select_related('user', 'book').first()
-            if not payment:
-                logger.warning(f"⚠️ Payment {moyasar_id} not found in DB")
-                return
+            # ✅ محاولة جلب الدفع أولاً
+            payment = Payment.objects.filter(moyasar_id=moyasar_id).first()
 
-            payment.status = "paid"
-            payment.paid_at = timezone.now()
-            payment.save()
+            if payment:
+                # ✅ تحديث الدفع الموجود
+                payment.status = "paid"
+                payment.paid_at = timezone.now()
+                
+                # ✅ تحديث user و book لو مش موجودين
+                if not payment.user and user:
+                    payment.user = user
+                if not payment.book and book:
+                    payment.book = book
+                    
+                payment.save()
+                logger.info(f"✅ Updated existing payment {moyasar_id}")
+            else:
+                # ✅ إنشاء دفع جديد
+                payment = Payment.objects.create(
+                    moyasar_id=moyasar_id,
+                    user=user,
+                    book=book,
+                    amount=payment_data.get("amount"),
+                    status="paid",
+                    paid_at=timezone.now(),
+                    description=payment_data.get("description"),
+                    currency=payment_data.get("currency", "SAR"),
+                    source_type=payment_data.get("source", {}).get("type"),
+                )
+                logger.info(f"✅ Created new payment {moyasar_id} via webhook")
 
-            unlock_user_book(payment)
-            update_invoice_on_payment_success(payment)
-
-            logger.info(f"✅ Payment {moyasar_id} marked as paid via webhook")
+            # ✅ فك القفل
+            if payment.user and payment.book:
+                unlock_user_book(payment)
+                update_invoice_on_payment_success(payment)
+            else:
+                logger.warning(f"⚠️ Cannot unlock - missing user or book for {moyasar_id}")
 
     except Exception as e:
         logger.error(f"❌ Error in handle_payment_paid: {str(e)}", exc_info=True)
-
 
 def handle_payment_failed(payment_data):
     moyasar_id = payment_data.get('id')
@@ -407,6 +453,7 @@ def update_invoice_on_payment_success(payment):
 
 
 @csrf_exempt
+@csrf_exempt
 def payment_callback_view(request):
     """
     Callback URL لإعادة توجيه المستخدم بعد الدفع
@@ -422,18 +469,44 @@ def payment_callback_view(request):
 
         if moyasar_id:
             try:
+                # ✅ جلب بيانات الدفع من Moyasar
                 payment_data, status_code = fetch_payment_api(moyasar_id)
                 
                 if status_code != 200:
                     logger.error(f"❌ Failed to fetch from Moyasar: {payment_data}")
                     raise Exception("Could not verify payment")
 
-                logger.info(f"✅ Payment data from Moyasar: {payment_data}")
+                logger.info(f"✅ Payment data from Moyasar: {json.dumps(payment_data, indent=2)}")
 
+                # ✅ استخراج البيانات من metadata
+                metadata = payment_data.get("metadata", {})
+                user_id = metadata.get("user_id")
+                book_id = metadata.get("book_id")
+
+                # ✅ جلب الـ user والـ book
+                user = None
+                book = None
+
+                if user_id:
+                    try:
+                        from users.models import CustomUser
+                        user = CustomUser.objects.get(id=user_id)
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not find user {user_id}: {e}")
+
+                if book_id:
+                    try:
+                        book = Book.objects.get(id=book_id)
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not find book {book_id}: {e}")
+
+                # ✅ حفظ أو تحديث الدفع
                 with transaction.atomic():
                     payment, created = Payment.objects.get_or_create(
                         moyasar_id=moyasar_id,
                         defaults={
+                            "user": user,
+                            "book": book,
                             "amount": payment_data.get("amount"),
                             "status": payment_data.get("status"),
                             "description": payment_data.get("description"),
@@ -443,18 +516,35 @@ def payment_callback_view(request):
                     )
 
                     if not created:
+                        # ✅ تحديث البيانات
                         old_status = payment.status
                         payment.status = payment_data.get("status")
                         payment.amount = payment_data.get("amount")
+                        
+                        # ✅ تحديث user و book لو مش موجودين
+                        if not payment.user and user:
+                            payment.user = user
+                        if not payment.book and book:
+                            payment.book = book
+                            
                         payment.save()
                         
                         logger.info(f"✅ Updated: {old_status} → {payment.status}")
 
+                        # ✅ فك القفل لو الدفع نجح
                         if old_status != "paid" and payment.status == "paid":
-                            update_invoice_on_payment_success(payment)
-                            unlock_user_book(payment)
+                            if payment.user and payment.book:
+                                unlock_user_book(payment)
+                                update_invoice_on_payment_success(payment)
+                            else:
+                                logger.warning(f"⚠️ Cannot unlock book - missing user or book")
                     else:
                         logger.info(f"✅ Created payment: {moyasar_id}")
+                        
+                        # ✅ فك القفل لو الدفع جاهز
+                        if payment.status == "paid" and payment.user and payment.book:
+                            unlock_user_book(payment)
+                            update_invoice_on_payment_success(payment)
 
                 invoice = getattr(payment, "invoice", None)
                         
@@ -472,7 +562,6 @@ def payment_callback_view(request):
         return render(request, "payments/payment_failed.html", {
             "error": "حدث خطأ في معالجة الدفعة"
         })
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

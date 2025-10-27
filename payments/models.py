@@ -11,8 +11,8 @@ class Payment(models.Model):
         ('refunded', 'Refunded'),
         ('canceled', 'Canceled'),
     ]
-    user = models.ForeignKey("users.CustomUser", on_delete=models.CASCADE, related_name="user_payments")
-    book = models.ForeignKey('questions.Book', on_delete=models.CASCADE, related_name="book_payments")
+    user = models.ForeignKey("users.CustomUser", on_delete=models.CASCADE, related_name="user_payments", null=True, blank=True)
+    book = models.ForeignKey('questions.Book', on_delete=models.CASCADE, related_name="book_payments", null=True, blank=True)
     moyasar_id = models.CharField(max_length=100, unique=True)
     amount = models.IntegerField()
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default="initiated")
