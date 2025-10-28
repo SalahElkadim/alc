@@ -528,7 +528,36 @@ def handle_payment_paid(payment_data):
         # 🔥 NEW: إذا لم نجد user/book في metadata، حاول البحث في Payment الموجود
         if not user or not book:
             logger.info(f"🔍 Trying to find user/book from existing payment...")
-            existing_payment = Payment.objects.filter(moyasar_id=moyasar_id).first()
+            
+            # 🔥 NEW: محاولة استخراج session_id من callback_url
+            callback_url = payment_data.get('callback_url', '')
+            session_id = None
+            
+            if 'session_id=' in callback_url:
+                try:
+                    session_id = callback_url.split('session_id=')[1].split('&')[0]
+                    logger.info(f"✅ Extracted session_id from callback_url: {session_id}")
+                except:
+                    logger.warning(f"⚠️ Failed to extract session_id from: {callback_url}")
+            
+            # محاولة جلب Payment الموجود
+            existing_payment = None
+            
+            # أولاً: محاولة بـ session_id
+            if session_id:
+                try:
+                    existing_payment = Payment.objects.get(id=session_id, status="pending_form")
+                    logger.info(f"✅ Found pending payment by session_id: {session_id}")
+                except Payment.DoesNotExist:
+                    logger.warning(f"⚠️ No pending payment with session_id: {session_id}")
+            
+            # ثانياً: محاولة بـ moyasar_id
+            if not existing_payment:
+                existing_payment = Payment.objects.filter(moyasar_id=moyasar_id).first()
+                if existing_payment:
+                    logger.info(f"✅ Found existing payment by moyasar_id")
+            
+            # استخراج user و book
             if existing_payment:
                 if not user and existing_payment.user:
                     user = existing_payment.user
@@ -536,6 +565,23 @@ def handle_payment_paid(payment_data):
                 if not book and existing_payment.book:
                     book = existing_payment.book
                     logger.info(f"✅ Found book from existing payment: {book.title}")
+            
+            # 🔥 NEW: محاولة استخراج email من description
+            if not user:
+                description = payment_data.get('description', '')
+                logger.info(f"🔍 Trying to extract email from description: {description}")
+                
+                # البحث عن email في الوصف
+                import re
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', description)
+                if email_match:
+                    email = email_match.group(0)
+                    try:
+                        from users.models import CustomUser
+                        user = CustomUser.objects.get(email=email)
+                        logger.info(f"✅ Found user from description: {user.email}")
+                    except CustomUser.DoesNotExist:
+                        logger.warning(f"⚠️ User with email {email} not found")
 
         with transaction.atomic():
             # ✅ محاولة جلب الدفع أولاً
@@ -543,31 +589,51 @@ def handle_payment_paid(payment_data):
 
             if payment:
                 # ✅ تحديث الدفع الموجود
+                logger.info(f"✅ Payment {moyasar_id} already exists, updating...")
                 payment.status = "paid"
                 payment.paid_at = timezone.now()
                 
                 # ✅ تحديث user و book لو مش موجودين
                 if not payment.user and user:
                     payment.user = user
+                    logger.info(f"✅ Added user to existing payment: {user.email}")
                 if not payment.book and book:
                     payment.book = book
+                    logger.info(f"✅ Added book to existing payment: {book.title}")
                     
                 payment.save()
                 logger.info(f"✅ Updated existing payment {moyasar_id}")
             else:
                 # ✅ إنشاء دفع جديد
-                payment = Payment.objects.create(
-                    moyasar_id=moyasar_id,
-                    user=user,
-                    book=book,
-                    amount=payment_data.get("amount"),
-                    status="paid",
-                    paid_at=timezone.now(),
-                    description=payment_data.get("description"),
-                    currency=payment_data.get("currency", "SAR"),
-                    source_type=payment_data.get("source", {}).get("type"),
-                )
-                logger.info(f"✅ Created new payment {moyasar_id} via webhook")
+                try:
+                    payment = Payment.objects.create(
+                        moyasar_id=moyasar_id,
+                        user=user,
+                        book=book,
+                        amount=payment_data.get("amount"),
+                        status="paid",
+                        paid_at=timezone.now(),
+                        description=payment_data.get("description"),
+                        currency=payment_data.get("currency", "SAR"),
+                        source_type=payment_data.get("source", {}).get("type"),
+                    )
+                    logger.info(f"✅ Created new payment {moyasar_id} via webhook")
+                except Exception as e:
+                    # 🔥 FIX: إذا حصل duplicate key (race condition)
+                    if 'duplicate key' in str(e).lower():
+                        logger.warning(f"⚠️ Race condition detected, fetching existing payment")
+                        payment = Payment.objects.get(moyasar_id=moyasar_id)
+                        
+                        # تحديث البيانات
+                        payment.status = "paid"
+                        payment.paid_at = timezone.now()
+                        if not payment.user and user:
+                            payment.user = user
+                        if not payment.book and book:
+                            payment.book = book
+                        payment.save()
+                    else:
+                        raise
 
             # 🔥 FIX: فك القفل وتحديث الفاتورة
             if payment.user and payment.book:
@@ -674,16 +740,50 @@ def payment_callback_view(request):
                         pending_payment = Payment.objects.get(id=payment_session_id, status="pending_form")
                         logger.info(f"✅ Found pending payment: {pending_payment.id}")
                         
-                        # تحديث الـ Payment بـ moyasar_id الحقيقي
-                        pending_payment.moyasar_id = moyasar_id
-                        pending_payment.status = "initiated"
-                        pending_payment.save()
+                        # 🔥 FIX: تحقق إذا كان moyasar_id موجود بالفعل (من Webhook)
+                        existing_payment_with_moyasar = Payment.objects.filter(moyasar_id=moyasar_id).first()
                         
-                        payment = pending_payment
-                        logger.info(f"✅ Updated pending payment with moyasar_id: {moyasar_id}")
+                        if existing_payment_with_moyasar:
+                            # ✅ Webhook سبقنا وحفظ Payment
+                            logger.info(f"⚠️ Payment {moyasar_id} already exists (from webhook)")
+                            
+                            # نحذف الـ pending payment ونستخدم الموجود
+                            pending_payment.delete()
+                            payment = existing_payment_with_moyasar
+                            
+                            # نتأكد من وجود user و book
+                            if not payment.user or not payment.book:
+                                # نحاول نحصل عليهم من الـ pending
+                                if not payment.user:
+                                    # نجلب من Moyasar description
+                                    payment_data, _ = fetch_payment_api(moyasar_id)
+                                    description = payment_data.get('description', '')
+                                    if 'sada@gmail.com' in description:  # مثال
+                                        from users.models import CustomUser
+                                        try:
+                                            email = description.split(' - ')[-1]
+                                            user = CustomUser.objects.get(email=email)
+                                            payment.user = user
+                                            logger.info(f"✅ Found user from description: {user.email}")
+                                        except:
+                                            pass
+                                
+                                payment.save()
+                            
+                            logger.info(f"✅ Using webhook-created payment")
+                        else:
+                            # ✅ Webhook لم يصل بعد، نحدث الـ pending
+                            pending_payment.moyasar_id = moyasar_id
+                            pending_payment.status = "initiated"
+                            pending_payment.save()
+                            
+                            payment = pending_payment
+                            logger.info(f"✅ Updated pending payment with moyasar_id: {moyasar_id}")
                         
                     except Payment.DoesNotExist:
                         logger.warning(f"⚠️ Pending payment {payment_session_id} not found")
+                    except Exception as e:
+                        logger.error(f"❌ Error handling pending payment: {e}", exc_info=True)
                 
                 # إذا لم نجد payment بالـ session_id، نجلب من Moyasar
                 if not payment:
