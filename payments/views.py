@@ -156,8 +156,13 @@ class CreatePaymentView(APIView):
                     payment.save()
                     logger.warning(f"⚠️ Payment {moyasar_id} already exists, updated")
 
-                # 8️⃣ إنشاء الفاتورة
-                #self.create_invoice(payment, description)
+                # 8️⃣ إنشاء الفاتورة (FIXED)
+                try:
+                    self.create_invoice(payment, description)
+                    logger.info(f"✅ Invoice created for payment {moyasar_id}")
+                except Exception as e:
+                    logger.error(f"⚠️ Failed to create invoice: {e}", exc_info=True)
+                    # نكمل العملية حتى لو فشل إنشاء الفاتورة
 
                 logger.info(f"✅ Payment saved: {moyasar_id} - Status: {payment.status}")
 
@@ -182,13 +187,21 @@ class CreatePaymentView(APIView):
                 })
 
             elif status == "paid":
-                unlock_user_book(payment)
-                return Response({
-                    "status": "paid",
-                    "message": "Book unlocked successfully",
-                    "payment_id": moyasar_id,
-                    "book": {"id": str(book.id), "title": book.title},
-                })
+                # 🔥 FIX: استخدام الدالة المحسّنة
+                unlock_success = unlock_user_book(payment)
+                if unlock_success:
+                    return Response({
+                        "status": "paid",
+                        "message": "Book unlocked successfully",
+                        "payment_id": moyasar_id,
+                        "book": {"id": str(book.id), "title": book.title},
+                    })
+                else:
+                    return Response({
+                        "status": "paid",
+                        "message": "Payment successful but unlock failed",
+                        "payment_id": moyasar_id,
+                    }, status=500)
 
             else:
                 return Response({
@@ -220,6 +233,7 @@ class CreatePaymentView(APIView):
             logger.info(f"✅ Invoice created for payment {payment.moyasar_id}")
         except Exception as e:
             logger.error(f"❌ Error creating invoice: {e}", exc_info=True)
+            raise  # نرفع الـ exception للتعامل معها في المستوى الأعلى
 
 
 @api_view(["GET"])
@@ -235,6 +249,7 @@ def fetch_payment_view(request, moyasar_id):
                 payment.amount = data.get("amount")
                 payment.save()
 
+                # 🔥 FIX: تحديث الفاتورة بشكل آمن
                 if old_status != "paid" and payment.status == "paid":
                     update_invoice_on_payment_success(payment)
 
@@ -338,32 +353,50 @@ def verify_webhook_signature(payload, signature):
 
 def unlock_user_book(payment):
     """
-    فك قفل الكتاب للمستخدم بعد الدفع الناجح
+    🔥 FIXED: فك قفل الكتاب للمستخدم بعد الدفع الناجح
+    Returns: True إذا نجحت العملية، False إذا فشلت
     """
     try:
         user = payment.user
         book = payment.book
 
-        if not user or not book:
-            logger.warning("⚠️ Missing user or book")
-            return
+        # ✅ التحقق من وجود المستخدم والكتاب
+        if not user:
+            logger.error(f"❌ Payment {payment.moyasar_id} has no user!")
+            return False
+            
+        if not book:
+            logger.error(f"❌ Payment {payment.moyasar_id} has no book!")
+            return False
 
-        user_book, created = UserBook.objects.update_or_create(
-            user=user,
-            book=book,
-            defaults={
-                "status": "unlocked",
-                "unlocked_at": timezone.now(),
-                "payment": payment
-            }
-        )
+        # ✅ استخدام transaction للتأكد من سلامة البيانات
+        with transaction.atomic():
+            user_book, created = UserBook.objects.update_or_create(
+                user=user,
+                book=book,
+                defaults={
+                    "status": "unlocked",
+                    "unlocked_at": timezone.now(),
+                    "payment": payment
+                }
+            )
 
-        logger.info(f"✅ User {user.email} unlocked {book.title}")
+            if created:
+                logger.info(f"✅ NEW: User {user.email} unlocked {book.title}")
+            else:
+                logger.info(f"✅ UPDATED: User {user.email} unlocked {book.title}")
+
+        return True
 
     except Exception as e:
-        logger.error(f"❌ Error unlocking book: {str(e)}", exc_info=True)
+        logger.error(f"❌ Critical error unlocking book for payment {payment.moyasar_id}: {str(e)}", exc_info=True)
+        return False
+
 
 def handle_payment_paid(payment_data):
+    """
+    🔥 FIXED: معالجة webhook للدفع الناجح
+    """
     try:
         moyasar_id = payment_data.get("id")
         if not moyasar_id:
@@ -380,16 +413,20 @@ def handle_payment_paid(payment_data):
         user = None
         book = None
 
+        # ✅ جلب المستخدم
         if user_id:
             try:
                 from users.models import CustomUser
                 user = CustomUser.objects.get(id=user_id)
+                logger.info(f"✅ Found user: {user.email}")
             except Exception as e:
                 logger.warning(f"⚠️ User {user_id} not found: {e}")
 
+        # ✅ جلب الكتاب
         if book_id:
             try:
                 book = Book.objects.get(id=book_id)
+                logger.info(f"✅ Found book: {book.title}")
             except Exception as e:
                 logger.warning(f"⚠️ Book {book_id} not found: {e}")
 
@@ -425,15 +462,22 @@ def handle_payment_paid(payment_data):
                 )
                 logger.info(f"✅ Created new payment {moyasar_id} via webhook")
 
-            # ✅ فك القفل
+            # 🔥 FIX: فك القفل وتحديث الفاتورة
             if payment.user and payment.book:
-                unlock_user_book(payment)
+                unlock_success = unlock_user_book(payment)
+                if unlock_success:
+                    logger.info(f"✅ Book unlocked successfully for {moyasar_id}")
+                else:
+                    logger.error(f"❌ Failed to unlock book for {moyasar_id}")
+                
+                # ✅ تحديث الفاتورة (آمن)
                 update_invoice_on_payment_success(payment)
             else:
                 logger.warning(f"⚠️ Cannot unlock - missing user or book for {moyasar_id}")
 
     except Exception as e:
         logger.error(f"❌ Error in handle_payment_paid: {str(e)}", exc_info=True)
+
 
 def handle_payment_failed(payment_data):
     moyasar_id = payment_data.get('id')
@@ -466,24 +510,36 @@ def handle_payment_refunded(payment_data):
 
 
 def update_invoice_on_payment_success(payment):
+    """
+    🔥 FIXED: تحديث الفاتورة عند نجاح الدفع (معالجة آمنة)
+    """
     try:
+        # ✅ التحقق من وجود الفاتورة أولاً
+        if not hasattr(payment, 'invoice'):
+            logger.warning(f"⚠️ No invoice exists for payment {payment.moyasar_id}")
+            return
+        
         invoice = payment.invoice
+        
+        # ✅ التحقق من أن الفاتورة لم تكن مدفوعة مسبقاً
         if not invoice.paid_at:
             invoice.paid_at = timezone.now()
             invoice.status = 'paid'
             invoice.save()
-            logger.info(f"Invoice {invoice.invoice_number} marked as paid")
+            logger.info(f"✅ Invoice {invoice.invoice_number} marked as paid")
+        else:
+            logger.info(f"ℹ️ Invoice {invoice.invoice_number} was already paid")
+            
     except Invoice.DoesNotExist:
-        logger.warning(f"No invoice for payment {payment.moyasar_id}")
+        logger.warning(f"⚠️ No invoice found for payment {payment.moyasar_id}")
     except Exception as e:
-        logger.error(f"Error updating invoice: {str(e)}")
+        logger.error(f"❌ Error updating invoice for payment {payment.moyasar_id}: {str(e)}", exc_info=True)
 
 
-@csrf_exempt
 @csrf_exempt
 def payment_callback_view(request):
     """
-    Callback URL لإعادة توجيه المستخدم بعد الدفع
+    🔥 FIXED: Callback URL لإعادة توجيه المستخدم بعد الدفع
     """
     try:
         status = request.GET.get("status")
@@ -558,21 +614,24 @@ def payment_callback_view(request):
                         
                         logger.info(f"✅ Updated: {old_status} → {payment.status}")
 
-                        # ✅ فك القفل لو الدفع نجح
+                        # 🔥 FIX: فك القفل لو الدفع نجح
                         if old_status != "paid" and payment.status == "paid":
                             if payment.user and payment.book:
-                                unlock_user_book(payment)
-                                update_invoice_on_payment_success(payment)
+                                unlock_success = unlock_user_book(payment)
+                                if unlock_success:
+                                    update_invoice_on_payment_success(payment)
                             else:
                                 logger.warning(f"⚠️ Cannot unlock book - missing user or book")
                     else:
                         logger.info(f"✅ Created payment: {moyasar_id}")
                         
-                        # ✅ فك القفل لو الدفع جاهز
+                        # 🔥 FIX: فك القفل لو الدفع جاهز
                         if payment.status == "paid" and payment.user and payment.book:
-                            unlock_user_book(payment)
-                            update_invoice_on_payment_success(payment)
+                            unlock_success = unlock_user_book(payment)
+                            if unlock_success:
+                                update_invoice_on_payment_success(payment)
 
+                # ✅ جلب الفاتورة بشكل آمن
                 invoice = getattr(payment, "invoice", None)
                         
             except Exception as e:
@@ -589,6 +648,7 @@ def payment_callback_view(request):
         return render(request, "payments/payment_failed.html", {
             "error": "حدث خطأ في معالجة الدفعة"
         })
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -661,31 +721,3 @@ def display_invoice_view(request, moyasar_id):
 @csrf_exempt
 def test_callback_view(request):
     return HttpResponse("Callback test successful", status=200)
-
-
-def unlock_user_book(payment):
-    """
-    فك قفل الكتاب للمستخدم بعد الدفع الناجح
-    """
-    try:
-        user = payment.user
-        book = payment.book
-
-        if not user or not book:
-            logger.warning("⚠️ Missing user or book")
-            return
-
-        user_book, created = UserBook.objects.update_or_create(
-            user=user,
-            book=book,
-            defaults={
-                "status": "unlocked",
-                "unlocked_at": timezone.now(),
-                "payment": payment
-            }
-        )
-
-        logger.info(f"✅ User {user.email} unlocked {book.title}")
-
-    except Exception as e:
-        logger.error(f"❌ Error unlocking book: {str(e)}", exc_info=True)
