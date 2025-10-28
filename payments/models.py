@@ -1,9 +1,12 @@
 from django.db import models
 from django.utils import timezone
 
+# في ملف payments/models.py
+# أضف هذه الحالة للـ PAYMENT_STATUS_CHOICES
 
 class Payment(models.Model):
     PAYMENT_STATUS_CHOICES = [
+        ('pending_form', 'Pending Form'),  # 🔥 NEW: قبل ما يدفع المستخدم
         ('initiated', 'Initiated'),
         ('pending', 'Pending'),
         ('paid', 'Paid'),
@@ -11,6 +14,7 @@ class Payment(models.Model):
         ('refunded', 'Refunded'),
         ('canceled', 'Canceled'),
     ]
+    
     user = models.ForeignKey("users.CustomUser", on_delete=models.CASCADE, related_name="user_payments", null=True, blank=True)
     book = models.ForeignKey('questions.Book', on_delete=models.CASCADE, related_name="book_payments", null=True, blank=True)
     moyasar_id = models.CharField(max_length=100, unique=True)
@@ -33,7 +37,9 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.email} - {self.book.title} - {self.status}"
+        user_email = self.user.email if self.user else "No User"
+        book_title = self.book.title if self.book else "No Book"
+        return f"{user_email} - {book_title} - {self.status}"
 
 
 class Invoice(models.Model):

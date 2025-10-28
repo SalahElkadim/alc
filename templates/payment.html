@@ -6,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>إتمام الدفع | ALC</title>
 
-  <!-- خط Tajawal -->
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-
-  <!-- Moyasar SDK -->
   <script src="https://cdn.moyasar.com/mpf/1.7.3/moyasar.js"></script>
 
   <style>
@@ -50,7 +47,6 @@
       line-height: 1.6;
     }
 
-    /* ✅ حاوية فورم ميسر */
     .mysr-form {
       background: #ffffff;
       border-radius: 12px;
@@ -69,17 +65,12 @@
       border-color: #b8cce5;
     }
 
-     .mysr-form input[type="text"],
+    .mysr-form input[type="text"],
     .mysr-form input[type="tel"],
     .mysr-form input[type="email"],
     .mysr-form input[type="number"],
     .mysr-form select,
-    .mysr-form-input,
-    #mysr-cc-name,
-    #mysr-cc-number,
-    #mysr-cc-month,
-    #mysr-cc-year,
-    #mysr-cc-cvc {
+    .mysr-form-input {
       width: 100% !important;
       padding: 14px 18px !important;
       font-size: 16px !important;
@@ -93,6 +84,7 @@
       margin-bottom: 16px !important;
       box-sizing: border-box !important;
     }
+
     .mysr-form input:focus,
     .mysr-form select:focus {
       background: #ffffff !important;
@@ -111,7 +103,6 @@
       padding-right: 4px;
     }
 
-    /* زرار الدفع */
     .mysr-form button,
     .mysr-form input[type="submit"] {
       width: 100%;
@@ -135,13 +126,6 @@
       box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4) !important;
     }
 
-    .mysr-form button:active,
-    .mysr-form input[type="submit"]:active {
-      transform: translateY(-1px) !important;
-      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
-    }
-
-    /* تحميل */
     body.loading {
       pointer-events: none;
       position: relative;
@@ -174,51 +158,19 @@
       z-index: 9999;
     }
 
-    .loading-text {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, calc(-50% + 60px));
-      font-size: 18px;
-      font-weight: 600;
-      color: #1d4ed8;
-      z-index: 9999;
-      animation: pulse 1.5s ease-in-out infinite;
-      display: none;
-    }
-
-    body.loading .loading-text {
-      display: block;
-    }
-
     @keyframes spin {
       to { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 0.5; }
-      50% { opacity: 1; }
+    .error-message {
+      background: #fee;
+      color: #c00;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
     }
 
-    /* شعارات الدفع */
-    .payment-logos {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 12px;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #d4e1f5;
-      opacity: 0.7;
-    }
-
-    .payment-logos span {
-      font-size: 13px;
-      color: #4a5f7f;
-      font-weight: 500;
-    }
-
-    /* تنسيق عام للموبايل */
     @media (max-width: 480px) {
       body {
         padding: 30px 15px;
@@ -228,29 +180,11 @@
         font-size: 26px;
       }
 
-      p {
-        font-size: 15px;
-      }
-
       .mysr-form {
         width: 100%;
         padding: 28px 22px;
-        border-radius: 10px;
-      }
-
-      .mysr-form input,
-      .mysr-form select {
-        padding: 12px 16px !important;
-        font-size: 15px !important;
-      }
-
-      .mysr-form button,
-      .mysr-form input[type="submit"] {
-        padding: 14px 20px !important;
-        font-size: 17px !important;
       }
     }
-    
   </style>
 </head>
 
@@ -260,86 +194,64 @@
 
     <div class="error-message" id="errorMessage"></div>
 
-    <!-- ✅ نموذج ميسر -->
     <div class="mysr-form"></div>
 
   <script>
-    const accessToken = "{{ access_token }}"; // ✅ جاي من Django (مرسل من Flutter)
+    const accessToken = "{{ access_token }}";
+    const paymentSessionId = "{{ payment_session_id }}";  // 🔥 NEW
+    const bookId = "{{ book_id }}";
+    const userEmail = "{{ user_email }}";  // 🔥 NEW
+
+    console.log("🔍 Payment Session ID:", paymentSessionId);
+    console.log("🔍 Book ID:", bookId);
+    console.log("🔍 User Email:", userEmail);
 
     Moyasar.init({
       element: '.mysr-form',
-      amount: {{ amount }}, // بالهللة (مثلاً 10000 = 100 ريال)
+      amount: {{ amount }},
       currency: 'SAR',
-      description: 'خدمة فتح كتاب ALC',
+      description: 'خدمة فتح كتاب ALC - ' + userEmail,
       publishable_api_key: 'pk_live_fKVM1h6efFnnvHcCz34HWaRFUMwuUBuXBs1qTYxk',
-      callback_url: "https://alc-production-5d34.up.railway.app/payments/callback/",
+      // 🔥 NEW: إضافة session_id في callback_url
+      callback_url: "https://alc-production-5d34.up.railway.app/payments/callback/?session_id=" + paymentSessionId,
       supported_networks: ['visa', 'mastercard', 'mada'],
       methods: ['creditcard'],
 
       on_completed: function (payment) {
-        console.log("✅ Token received:", payment.source.token);
-        sendTokenToServer(payment.source.token);
+        console.log("✅ Payment completed:", payment);
+        
+        // 🔥 إذا كان الدفع ناجح مباشرة (بدون 3D Secure)
+        if (payment.status === 'paid') {
+          console.log("✅ Payment already paid, redirecting...");
+          window.location.href = "/payments/callback/?status=paid&id=" + payment.id + "&session_id=" + paymentSessionId;
+        }
+        // 🔥 إذا كان يحتاج 3D Secure
+        else if (payment.status === 'initiated' && payment.source && payment.source.transaction_url) {
+          console.log("🔄 Redirecting to 3D Secure...");
+          window.location.href = payment.source.transaction_url;
+        }
+        // 🔥 أي حالة أخرى
+        else {
+          console.log("⚠️ Unknown payment status:", payment.status);
+          showError("حالة الدفع غير متوقعة: " + payment.status);
+        }
       },
 
       on_failed: function (error) {
-        showError("حدث خطأ أثناء إنشاء التوكن: " + error.message);
+        console.error("❌ Payment failed:", error);
+        showError("فشل الدفع: " + (error.message || "حدث خطأ غير متوقع"));
       }
     });
 
-    // ✅ إرسال التوكن للسيرفر
-    function sendTokenToServer(token) {
-      const data = {
-        amount: {{ amount }},
-        description: "دفع لفتح كتاب",
-        source: { token: token },
-        book_id: "{{ book_id }}"  // ✅ إضافة book_id
-
-      };
-
-      document.body.classList.add('loading');
-
-      fetch("{% url 'create-payment' %}", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + accessToken
-        },
-        body: JSON.stringify(data)
-      })
-      .then(res => {
-        if (!res.ok) return res.json().then(err => Promise.reject(err));
-        return res.json();
-      })
-      .then(response => {
-        document.body.classList.remove('loading');
-        console.log("📦 Server response:", response);
-
-        if (response.status === "initiated" && response.transaction_url) {
-          window.location.href = response.transaction_url;
-        } else if (response.status === "paid") {
-          window.location.href = "/payments/callback/?status=paid&id=" + response.moyasar_data.id;
-        } else {
-          showError("فشل الدفع: " + (response.message || "حدث خطأ غير متوقع"));
-        }
-      })
-      .catch(err => {
-        document.body.classList.remove('loading');
-        console.error("❌ Error:", err);
-
-        if (err.detail && err.detail.includes('Authentication')) {
-          showError("جلسة العمل انتهت. يرجى إعادة المحاولة.");
-        } else {
-          showError(err.error || err.message || "حدث خطأ أثناء إرسال الدفع للسيرفر.");
-        }
-      });
-    }
-
     function showError(message) {
       const errorDiv = document.getElementById('errorMessage');
-      if (!errorDiv) return alert(message);
+      if (!errorDiv) {
+        alert(message);
+        return;
+      }
       errorDiv.textContent = message;
       errorDiv.style.display = 'block';
-      setTimeout(() => errorDiv.style.display = 'none', 5000);
+      setTimeout(() => errorDiv.style.display = 'none', 7000);
     }
   </script>
 </body>
