@@ -458,7 +458,6 @@ def unlock_user_book(payment):
                 book=book,
                 defaults={
                     "status": "unlocked",
-                    "unlocked_at": timezone.now(),
                     "payment": payment
                 }
             )
