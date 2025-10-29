@@ -41,6 +41,32 @@ class LoginView(APIView):
         ip_address = self.get_client_ip(request)
         email = request.data.get('email')
 
+        # ✅ فحص إذا كان المستخدم مسجل دخول فعلاً
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header.startswith('Bearer '):
+            try:
+                jwt_auth = JWTAuthentication()
+                token = auth_header.split(' ')[1]
+                validated_token = jwt_auth.get_validated_token(token)
+                current_user = jwt_auth.get_user(validated_token)
+                jti = validated_token['jti']
+                
+                # تحقق من وجود جلسة نشطة
+                active_session = UserSession.objects.filter(
+                    user=current_user,
+                    session_key=jti,
+                    is_active=True
+                ).exists()
+                
+                if active_session:
+                    return Response(
+                        {"error_message": "You are already logged in. Please logout first."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except:
+                pass  # التوكن منتهي أو غلط، كمل عادي
+
+        # فحص Account Lock
         if email:
             try:
                 user = CustomUser.objects.get(email=email)
@@ -65,18 +91,15 @@ class LoginView(APIView):
             user.account_locked_until = None
             user.save()
 
-            # إنشاء UserSession
             device_fingerprint = generate_device_fingerprint(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')
             
-            # الحصول على JWT token من الـ serializer
             access_token = serializer.validated_data['tokens']['access']
 
             jwt_auth = JWTAuthentication()
             validated_token = jwt_auth.get_validated_token(access_token)
             session_key = validated_token['jti']
             
-            # إنشاء جلسة جديدة
             UserSession.objects.create(
                 user=user,
                 session_key=session_key,
@@ -88,7 +111,6 @@ class LoginView(APIView):
 
             logger.info(f"Successful login for user: {email} from IP: {ip_address}")
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
-        # ... باقي الكود
         else:
             if email:
                 try:
@@ -102,7 +124,6 @@ class LoginView(APIView):
                     pass
 
             errors = serializer.errors
-            # لو في error_message، خذ أول رسالة بدل القائمة كلها
             if 'error_message' in errors:
                 message = errors['error_message']
                 if isinstance(message, list):
@@ -115,7 +136,6 @@ class LoginView(APIView):
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
-
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
