@@ -55,6 +55,11 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user = CustomUser.objects.get(email=email)
+            
+            # ✅ إلغاء الجلسات القديمة **قبل** إنشاء التوكن
+            if not user.allows_multiple_devices():
+                UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
+            
             user.failed_login_attempts = 0
             user.last_login_ip = ip_address
             user.account_locked_until = None
@@ -67,19 +72,14 @@ class LoginView(APIView):
             # الحصول على JWT token من الـ serializer
             access_token = serializer.validated_data['tokens']['access']
 
-            from rest_framework_simplejwt.authentication import JWTAuthentication
             jwt_auth = JWTAuthentication()
             validated_token = jwt_auth.get_validated_token(access_token)
             session_key = validated_token['jti']
             
-            # إلغاء الجلسات السابقة للطلاب فقط
-            if not user.allows_multiple_devices():
-                UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
-            
             # إنشاء جلسة جديدة
             UserSession.objects.create(
                 user=user,
-                session_key= session_key,
+                session_key=session_key,
                 device_fingerprint=device_fingerprint,
                 ip_address=ip_address,
                 user_agent=user_agent,
@@ -88,6 +88,7 @@ class LoginView(APIView):
 
             logger.info(f"Successful login for user: {email} from IP: {ip_address}")
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        # ... باقي الكود
         else:
             if email:
                 try:
@@ -126,13 +127,20 @@ class LogoutView(APIView):
                 return Response({"error_message": "Refresh token is required."},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+            # ✅ إلغاء الجلسة قبل تدمير التوكن
             if not request.user.allows_multiple_devices():
-                device_fingerprint = generate_device_fingerprint(request)
-                UserSession.objects.filter(
-                    user=request.user,
-                    device_fingerprint=device_fingerprint,
-                    is_active=True
-                ).update(is_active=False)
+                # الحصول على jti من access token الحالي
+                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                if auth_header.startswith('Bearer '):
+                    jwt_auth = JWTAuthentication()
+                    validated_token = jwt_auth.get_validated_token(auth_header.split(' ')[1])
+                    jti = validated_token['jti']
+                    
+                    UserSession.objects.filter(
+                        user=request.user,
+                        session_key=jti,
+                        is_active=True
+                    ).update(is_active=False)
 
             token = RefreshToken(refresh_token)
             token.blacklist()
@@ -144,7 +152,6 @@ class LogoutView(APIView):
         except TokenError:
             return Response({"error_message": "Invalid or expired token."},
                             status=status.HTTP_400_BAD_REQUEST)
-
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -289,22 +296,35 @@ class ActiveSessionsView(APIView):
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
+        
         if response.status_code == 200 and "access" in response.data:
-            access_token = response.data["access"]
+            try:
+                access_token = response.data["access"]
+                jwt_auth = JWTAuthentication()
+                validated_token = jwt_auth.get_validated_token(access_token)
+                jti = validated_token["jti"]
+                user = jwt_auth.get_user(validated_token)
 
-            # استخراج ال jti + user من التوكن الجديد
-            jwt_auth = JWTAuthentication()
-            validated_token = jwt_auth.get_validated_token(access_token)
-            jti = validated_token["jti"]
-            user = jwt_auth.get_user(validated_token)
-
-            # تحديث آخر جلسة نشطة للمستخدم بال jti الجديد
-            session = UserSession.objects.filter(user=user, is_active=True).last()
-            if session:
-                session.session_key = jti
-                session.last_activity = timezone.now()
-                session.save()
-
+                # ✅ للطلاب: التحقق من وجود جلسة نشطة
+                if not user.allows_multiple_devices():
+                    session = UserSession.objects.filter(
+                        user=user, 
+                        is_active=True
+                    ).order_by('-last_activity').first()
+                    
+                    if session:
+                        session.session_key = jti
+                        session.last_activity = timezone.now()
+                        session.save()
+                    else:
+                        # لو مفيش جلسة نشطة، ارفض التحديث
+                        return Response(
+                            {"error_message": "No active session. Please login again."},
+                            status=401
+                        )
+            except Exception as e:
+                logger.error(f"Error in token refresh: {str(e)}")
+                
         return response
 
 def custom_404(request, exception):
