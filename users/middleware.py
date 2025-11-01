@@ -14,7 +14,6 @@ class SingleDeviceMiddleware:
     """
     
     EXCLUDED_PATHS = [
-        #'/users/login/',
         '/users/register/',
         '/users/logout/',
         '/users/forgot-password/',
