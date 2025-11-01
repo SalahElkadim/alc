@@ -50,7 +50,7 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # ✅ تأكد إن المستخدم موجود
+        # 🔹 تحقق من وجود المستخدم
         try:
             user = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
@@ -60,32 +60,39 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # ✅ فحص لو الحساب مقفول مؤقتًا
+        # 🔹 تحقق من إن الحساب مش مقفول
         if user.is_account_locked():
             return Response(
                 {"error_message": "Account is temporarily locked. Try again later."},
                 status=status.HTTP_423_LOCKED
             )
 
-        # ✅ فحص لو المستخدم عنده جلسة نشطة بالفعل (قبل إنشاء التوكن)
-        if not user.allows_multiple_devices():
-            active_session = UserSession.objects.filter(user=user, is_active=True).first()
-            if active_session:
+        # 🔹 إنشاء fingerprint للجهاز الحالي
+        device_fingerprint = generate_device_fingerprint(request)
+
+        # 🔹 نتحقق هل المستخدم له جلسة سابقة؟
+        existing_session = UserSession.objects.filter(user=user, is_active=True).first()
+
+        if existing_session:
+            # المستخدم مسجل دخول قبل كده
+            if existing_session.device_fingerprint != device_fingerprint:
                 return Response(
-                    {"error_message": "You are already logged in from another device."},
+                    {"error_message": "Login denied. Another device detected."},
                     status=status.HTTP_403_FORBIDDEN
                 )
+            else:
+                logger.info(f"User {email} logged in again from the same device.")
+                # نكمل تسجيل الدخول عادي (بنفس الجهاز)
+        else:
+            logger.info(f"First login for {email} from new device.")
 
-        # ✅ تحقق من صحة البيانات (الباسورد)
+        # ✅ فحص الباسورد وباقي البيانات
         serializer = LoginSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
-            # زيادة عدد المحاولات الفاشلة
             user.failed_login_attempts += 1
             if user.failed_login_attempts >= 5:
                 user.account_locked_until = timezone.now() + timedelta(minutes=15)
             user.save()
-
-            logger.warning(f"Failed login attempt for user: {email} from IP: {ip_address}")
             message = serializer.errors.get('error_message', ["Invalid credentials."])[0]
             return Response({"error_message": message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -95,7 +102,7 @@ class LoginView(APIView):
         user.last_login_ip = ip_address
         user.save()
 
-        # ✅ إنشاء التوكن
+        # إنشاء التوكن
         tokens = serializer.validated_data['tokens']
         access_token = tokens['access']
 
@@ -103,19 +110,23 @@ class LoginView(APIView):
         validated_token = jwt_auth.get_validated_token(access_token)
         session_key = validated_token['jti']
 
-        # ✅ إنشاء جلسة جديدة
-        device_fingerprint = generate_device_fingerprint(request)
-        user_agent = request.META.get('HTTP_USER_AGENT', '')
-
-        UserSession.objects.create(
-            user=user,
-            session_key=session_key,
-            device_fingerprint=device_fingerprint,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            last_activity=timezone.now(),
-            is_active=True
-        )
+        # 🔹 لو كانت الجلسة القديمة بنفس الجهاز، ممكن نحدثها بدل ما نعمل جديدة
+        if existing_session and existing_session.device_fingerprint == device_fingerprint:
+            existing_session.session_key = session_key
+            existing_session.ip_address = ip_address
+            existing_session.user_agent = request.META.get('HTTP_USER_AGENT', '')
+            existing_session.last_activity = timezone.now()
+            existing_session.save(update_fields=['session_key', 'ip_address', 'user_agent', 'last_activity'])
+        else:
+            # إنشاء جلسة جديدة
+            UserSession.objects.create(
+                user=user,
+                session_key=session_key,
+                device_fingerprint=device_fingerprint,
+                ip_address=ip_address,
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                is_active=True
+            )
 
         logger.info(f"✅ Successful login for {email} from IP: {ip_address}")
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
@@ -125,7 +136,6 @@ class LoginView(APIView):
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
-
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
