@@ -33,6 +33,9 @@ class RegisterView(APIView):
             return Response(serializer.to_representation(user), status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+logger = logging.getLogger(__name__)
+
 class LoginView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -41,101 +44,88 @@ class LoginView(APIView):
         ip_address = self.get_client_ip(request)
         email = request.data.get('email')
 
-        # ✅ فحص إذا كان المستخدم مسجل دخول فعلاً
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        if auth_header.startswith('Bearer '):
-            try:
-                jwt_auth = JWTAuthentication()
-                token = auth_header.split(' ')[1]
-                validated_token = jwt_auth.get_validated_token(token)
-                current_user = jwt_auth.get_user(validated_token)
-                jti = validated_token['jti']
-                
-                # تحقق من وجود جلسة نشطة
-                active_session = UserSession.objects.filter(
-                    user=current_user,
-                    session_key=jti,
-                    is_active=True
-                ).exists()
-                
-                if active_session:
-                    return Response(
-                        {"error_message": "You are already logged in. Please logout first."},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            except:
-                pass  # التوكن منتهي أو غلط، كمل عادي
-
-        # فحص Account Lock
-        if email:
-            try:
-                user = CustomUser.objects.get(email=email)
-                if user.is_account_locked():
-                    return Response(
-                        {"error_message": "Account is temporarily locked. Try again later."},
-                        status=status.HTTP_423_LOCKED
-                    )
-            except CustomUser.DoesNotExist:
-                pass
-
-        serializer = LoginSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            user = CustomUser.objects.get(email=email)
-            
-            # ✅ إلغاء الجلسات القديمة **قبل** إنشاء التوكن
-            if not user.allows_multiple_devices():
-                UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
-            
-            user.failed_login_attempts = 0
-            user.last_login_ip = ip_address
-            user.account_locked_until = None
-            user.save()
-
-            device_fingerprint = generate_device_fingerprint(request)
-            user_agent = request.META.get('HTTP_USER_AGENT', '')
-            
-            access_token = serializer.validated_data['tokens']['access']
-
-            jwt_auth = JWTAuthentication()
-            validated_token = jwt_auth.get_validated_token(access_token)
-            session_key = validated_token['jti']
-            
-            UserSession.objects.create(
-                user=user,
-                session_key=session_key,
-                device_fingerprint=device_fingerprint,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                is_active=True
+        if not email:
+            return Response(
+                {"error_message": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-            logger.info(f"Successful login for user: {email} from IP: {ip_address}")
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
-        else:
-            if email:
-                try:
-                    user = CustomUser.objects.get(email=email)
-                    user.failed_login_attempts += 1
-                    if user.failed_login_attempts >= 5:
-                        user.account_locked_until = timezone.now() + timedelta(minutes=15)
-                    user.save()
-                    logger.warning(f"Failed login attempt for user: {email} from IP: {ip_address}")
-                except CustomUser.DoesNotExist:
-                    pass
+        # ✅ تأكد إن المستخدم موجود
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            logger.warning(f"Login failed for non-existing user: {email}")
+            return Response(
+                {"error_message": "Invalid credentials."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            errors = serializer.errors
-            if 'error_message' in errors:
-                message = errors['error_message']
-                if isinstance(message, list):
-                    message = message[0]
-                errors = {'error_message': message}
-            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        # ✅ فحص لو الحساب مقفول مؤقتًا
+        if user.is_account_locked():
+            return Response(
+                {"error_message": "Account is temporarily locked. Try again later."},
+                status=status.HTTP_423_LOCKED
+            )
+
+        # ✅ فحص لو المستخدم عنده جلسة نشطة بالفعل (قبل إنشاء التوكن)
+        if not user.allows_multiple_devices():
+            active_session = UserSession.objects.filter(user=user, is_active=True).first()
+            if active_session:
+                return Response(
+                    {"error_message": "You are already logged in from another device."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # ✅ تحقق من صحة البيانات (الباسورد)
+        serializer = LoginSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            # زيادة عدد المحاولات الفاشلة
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= 5:
+                user.account_locked_until = timezone.now() + timedelta(minutes=15)
+            user.save()
+
+            logger.warning(f"Failed login attempt for user: {email} from IP: {ip_address}")
+            message = serializer.errors.get('error_message', ["Invalid credentials."])[0]
+            return Response({"error_message": message}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ تسجيل الدخول ناجح
+        user.failed_login_attempts = 0
+        user.account_locked_until = None
+        user.last_login_ip = ip_address
+        user.save()
+
+        # ✅ إنشاء التوكن
+        tokens = serializer.validated_data['tokens']
+        access_token = tokens['access']
+
+        jwt_auth = JWTAuthentication()
+        validated_token = jwt_auth.get_validated_token(access_token)
+        session_key = validated_token['jti']
+
+        # ✅ إنشاء جلسة جديدة
+        device_fingerprint = generate_device_fingerprint(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+        UserSession.objects.create(
+            user=user,
+            session_key=session_key,
+            device_fingerprint=device_fingerprint,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            last_activity=timezone.now(),
+            is_active=True
+        )
+
+        logger.info(f"✅ Successful login for {email} from IP: {ip_address}")
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
+
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
