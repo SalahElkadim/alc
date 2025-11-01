@@ -227,9 +227,9 @@ class ForgotPasswordView(APIView):
             print("📧 Attempting to send email...")
             send_mail(
                     subject='Password Reset',
-                    message= 'hello',
-                    #message=f'Click the link below to reset your password:\n{reset_link}',
-                    from_email= 'salah.mohamed.elkadim@gmail.com',
+                    #message= 'hello',
+                    message=f'Click the link below to reset your password:\n{reset_link}',
+                    from_email= 'alcapp21@gmail.com',
                     recipient_list = ['sm249481@gmail.com'],
                     
                 )
