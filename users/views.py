@@ -230,7 +230,7 @@ class ForgotPasswordView(APIView):
                     #message= 'hello',
                     message=f'Click the link below to reset your password:\n{reset_link}',
                     from_email= 'alcapp21@gmail.com',
-                    recipient_list = ['sm249481@gmail.com'],
+                    recipient_list = [user.email],
                     
                 )
             return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},status=status.HTTP_200_OK)
