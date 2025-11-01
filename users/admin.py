@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, UserBook,UserSession
+from .models import CustomUser, UserBook,UserSession,PasswordResetRequest
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
@@ -23,6 +23,7 @@ class CustomUserAdmin(UserAdmin):
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(UserBook)
 admin.site.register(UserSession)
+admin.site.register(PasswordResetRequest)
 
 
 

@@ -194,7 +194,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "alcapp21@gmail.com"
 EMAIL_HOST_USER = "alcapp21@gmail.com"
-EMAIL_HOST_PASSWORD = "voodeyprsmtpuhez"
+EMAIL_HOST_PASSWORD = "vood eypr smtp uhez"
 
 
 

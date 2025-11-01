@@ -105,3 +105,13 @@ class UserSession(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.device_fingerprint[:20]}"
+
+
+class PasswordResetRequest(models.Model):
+    email = models.EmailField()
+    reset_link = models.URLField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_handled = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.email} - {'تم الرد' if self.is_handled else 'بانتظار الرد'}"

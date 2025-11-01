@@ -17,6 +17,7 @@ from django.utils.encoding import force_bytes, force_str
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import render
+from .models import PasswordResetRequest
 
 
 logger = logging.getLogger(__name__)
@@ -206,38 +207,36 @@ class ProfileView(APIView):
 
 
 class ForgotPasswordView(APIView):
-    permission_classes = []  # إضافة هذا السطر
-    authentication_classes = [] 
+    permission_classes = []
+    authentication_classes = []
+
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
+
             try:
                 user = CustomUser.objects.get(email=email)
             except CustomUser.DoesNotExist:
-                return Response({"error_message": "هذا البريد غير مسجل."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error_message": "هذا البريد غير مسجل."}, status=400)
 
             token_generator = PasswordResetTokenGenerator()
             token = token_generator.make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
             reset_link = f"https://alcreactapp-production.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
-            #reset_link = f"http://127.0.0.1:8000/users/reset-password-confirm/{uidb64}/{token}/"
 
-            print("📧 Attempting to send email...")
-            send_mail(
-                    subject='Password Reset',
-                    #message= 'hello',
-                    message=f'Click the link below to reset your password:\n{reset_link}',
-                    from_email= 'alcapp21@gmail.com',
-                    recipient_list = [user.email],
-                    
-                )
-            return Response({"detail": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك."},status=status.HTTP_200_OK)
+            # 🔹 احفظ الطلب بدل الإرسال
+            PasswordResetRequest.objects.create(
+                email=email,
+                reset_link=reset_link
+            )
 
+            return Response({
+                "detail": "تم إرسال طلب استعادة كلمة المرور. سيقوم المشرف بالرد عليك قريبًا.",
+            }, status=200)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response(serializer.errors, status=400)
 
 class ResetPasswordConfirmView(APIView):
     permission_classes = []  # إضافة هذا السطر
