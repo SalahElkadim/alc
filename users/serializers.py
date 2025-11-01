@@ -9,7 +9,7 @@ from django.utils import timezone
 
 
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser,PasswordResetRequest
 from rest_framework_simplejwt.tokens import RefreshToken
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -126,3 +126,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+class PasswordResetRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PasswordResetRequest
+        fields = ['id', 'email', 'reset_link', 'created_at', 'is_handled']

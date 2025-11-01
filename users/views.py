@@ -348,3 +348,24 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 def custom_404(request, exception):
     return render(request, "errors/404.html", status=404)
+
+from rest_framework.permissions import IsAdminUser
+from .models import PasswordResetRequest
+from .serializers import PasswordResetRequestSerializer
+
+class PasswordResetRequestList(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        requests = PasswordResetRequest.objects.all().order_by('-created_at')
+        serializer = PasswordResetRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        try:
+            req = PasswordResetRequest.objects.get(pk=pk)
+            req.is_handled = request.data.get("is_handled", True)
+            req.save()
+            return Response({"detail": "تم تحديث الحالة بنجاح"})
+        except PasswordResetRequest.DoesNotExist:
+            return Response({"error": "الطلب غير موجود"}, status=404)
