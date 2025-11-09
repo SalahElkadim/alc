@@ -22,7 +22,6 @@ from .models import PasswordResetRequest
 
 logger = logging.getLogger(__name__)
 
-
 class RegisterView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -36,7 +35,6 @@ class RegisterView(APIView):
 
 
 logger = logging.getLogger(__name__)
-
 class LoginView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -67,27 +65,8 @@ class LoginView(APIView):
                 {"error_message": "Account is temporarily locked. Try again later."},
                 status=status.HTTP_423_LOCKED
             )
-
-        # 🔹 إنشاء fingerprint للجهاز الحالي
-        device_fingerprint = generate_device_fingerprint(request)
-
-        # 🔹 نتحقق هل المستخدم له جلسة سابقة؟
-        existing_session = UserSession.objects.filter(user=user, is_active=True).first()
-
-        if existing_session:
-            # المستخدم مسجل دخول قبل كده
-            if existing_session.device_fingerprint != device_fingerprint:
-                return Response(
-                    {"error_message": "Login denied. Another device detected."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            else:
-                logger.info(f"User {email} logged in again from the same device.")
-                # نكمل تسجيل الدخول عادي (بنفس الجهاز)
-        else:
-            logger.info(f"First login for {email} from new device.")
-
-        # ✅ فحص الباسورد وباقي البيانات
+        
+        # ✅ فحص الباسورد أولاً
         serializer = LoginSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             user.failed_login_attempts += 1
@@ -111,15 +90,31 @@ class LoginView(APIView):
         validated_token = jwt_auth.get_validated_token(access_token)
         session_key = validated_token['jti']
 
-        # 🔹 لو كانت الجلسة القديمة بنفس الجهاز، ممكن نحدثها بدل ما نعمل جديدة
-        if existing_session and existing_session.device_fingerprint == device_fingerprint:
-            existing_session.session_key = session_key
-            existing_session.ip_address = ip_address
-            existing_session.user_agent = request.META.get('HTTP_USER_AGENT', '')
-            existing_session.last_activity = timezone.now()
-            existing_session.save(update_fields=['session_key', 'ip_address', 'user_agent', 'last_activity'])
+        # 🔥 استثناء الـ Admin من فحص الـ fingerprint
+        if user.user_type == 'admin':
+            logger.info(f"✅ Admin login for {email} from IP: {ip_address} (fingerprint check skipped)")
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+
+        # 🔹 بالنسبة للطلاب: فحص الـ fingerprint
+        device_fingerprint = generate_device_fingerprint(request)
+        existing_session = UserSession.objects.filter(user=user, is_active=True).first()
+
+        if existing_session:
+            if existing_session.device_fingerprint != device_fingerprint:
+                return Response(
+                    {"error_message": "Login denied. Another device detected."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            else:
+                logger.info(f"User {email} logged in again from the same device.")
+                # تحديث الجلسة الموجودة
+                existing_session.session_key = session_key
+                existing_session.ip_address = ip_address
+                existing_session.user_agent = request.META.get('HTTP_USER_AGENT', '')
+                existing_session.last_activity = timezone.now()
+                existing_session.save(update_fields=['session_key', 'ip_address', 'user_agent', 'last_activity'])
         else:
-            # إنشاء جلسة جديدة
+            logger.info(f"First login for {email} from new device.")
             UserSession.objects.create(
                 user=user,
                 session_key=session_key,
@@ -137,6 +132,7 @@ class LoginView(APIView):
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
+
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
