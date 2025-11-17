@@ -10,7 +10,6 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 from .models import CustomUser, UserSession
-from .utils import generate_device_fingerprint
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -33,8 +32,8 @@ class RegisterView(APIView):
             return Response(serializer.to_representation(user), status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 logger = logging.getLogger(__name__)
+
 class LoginView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -66,7 +65,7 @@ class LoginView(APIView):
                 status=status.HTTP_423_LOCKED
             )
         
-        # ✅ فحص الباسورد أولاً
+        # ✅ فحص الباسورد
         serializer = LoginSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             user.failed_login_attempts += 1
@@ -82,48 +81,6 @@ class LoginView(APIView):
         user.last_login_ip = ip_address
         user.save()
 
-        # إنشاء التوكن
-        tokens = serializer.validated_data['tokens']
-        access_token = tokens['access']
-
-        jwt_auth = JWTAuthentication()
-        validated_token = jwt_auth.get_validated_token(access_token)
-        session_key = validated_token['jti']
-
-        # 🔥 استثناء الـ Admin من فحص الـ fingerprint
-        if user.user_type == 'admin':
-            logger.info(f"✅ Admin login for {email} from IP: {ip_address} (fingerprint check skipped)")
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
-
-        # 🔹 بالنسبة للطلاب: فحص الـ fingerprint
-        device_fingerprint = generate_device_fingerprint(request)
-        existing_session = UserSession.objects.filter(user=user, is_active=True).first()
-
-        if existing_session:
-            if existing_session.device_fingerprint != device_fingerprint:
-                return Response(
-                    {"error_message": "Login denied. Another device detected."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            else:
-                logger.info(f"User {email} logged in again from the same device.")
-                # تحديث الجلسة الموجودة
-                existing_session.session_key = session_key
-                existing_session.ip_address = ip_address
-                existing_session.user_agent = request.META.get('HTTP_USER_AGENT', '')
-                existing_session.last_activity = timezone.now()
-                existing_session.save(update_fields=['session_key', 'ip_address', 'user_agent', 'last_activity'])
-        else:
-            logger.info(f"First login for {email} from new device.")
-            UserSession.objects.create(
-                user=user,
-                session_key=session_key,
-                device_fingerprint=device_fingerprint,
-                ip_address=ip_address,
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                is_active=True
-            )
-
         logger.info(f"✅ Successful login for {email} from IP: {ip_address}")
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
@@ -132,7 +89,6 @@ class LoginView(APIView):
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
-
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -261,53 +217,6 @@ class ResetPasswordConfirmView(APIView):
         user.save()
         return Response({"detail": "تم تغيير كلمة المرور بنجاح."}, status=200)
 
-
-class ActiveSessionsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        sessions = UserSession.objects.filter(user=request.user, is_active=True)
-        active_sessions = [
-            s for s in sessions
-            if timezone.now() - s.last_activity <= timedelta(minutes=30)
-        ]
-        sessions_data = []
-        for session in active_sessions:
-            sessions_data.append({
-                'id': session.id,
-                'ip_address': session.ip_address,
-                'user_agent': session.user_agent[:100],
-                'created_at': session.created_at,
-                'last_activity': session.last_activity,
-                'is_current': session.device_fingerprint == generate_device_fingerprint(request)
-            })
-
-        return Response({
-            'active_sessions': sessions_data,
-            'allows_multiple_devices': request.user.allows_multiple_devices()
-        })
-
-    def delete(self, request):
-        session_id = request.data.get('session_id')
-        if not session_id:
-            return Response({"error_message": "Session ID is required."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            session = UserSession.objects.get(
-                id=session_id,
-                user=request.user,
-                is_active=True
-            )
-            session.is_active = False
-            session.save()
-
-            return Response({"detail": "Session terminated successfully."})
-
-        except UserSession.DoesNotExist:
-            return Response({"error_message": "Session not found."},
-                            status=status.HTTP_404_NOT_FOUND)
-
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -344,6 +253,11 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 def custom_404(request, exception):
     return render(request, "errors/404.html", status=404)
+
+def privacy(request):
+    return render(request, "privacy.html")
+def support(request):
+    return render(request, "support.html")
 
 from rest_framework.permissions import IsAdminUser
 from .models import PasswordResetRequest

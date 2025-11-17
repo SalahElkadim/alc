@@ -4,7 +4,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .utils import generate_device_fingerprint, get_client_ip
 from django.utils import timezone
 
 
