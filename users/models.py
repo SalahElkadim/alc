@@ -88,24 +88,6 @@ class UserBook(models.Model):
 
 
 
-class UserSession(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sessions')
-    session_key = models.CharField(max_length=1024, unique=True)  # JWT token أو session ID
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()  # معلومات المتصفح/التطبيق
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_activity = models.DateTimeField(auto_now=True)
-    is_active = models.BooleanField(default=True)
-    
-    
-    class Meta:
-        db_table = 'user_sessions'
-        ordering = ['-last_activity']
-
-    def __str__(self):
-        return f"{self.user.email} - {self.device_fingerprint[:20]}"
-
-
 class PasswordResetRequest(models.Model):
     email = models.EmailField()
     reset_link = models.URLField()

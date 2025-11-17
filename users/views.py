@@ -9,7 +9,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 import logging
-from .models import CustomUser, UserSession
+from .models import CustomUser
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -97,34 +97,26 @@ class LogoutView(APIView):
         try:
             refresh_token = request.data.get("refresh")
             if not refresh_token:
-                return Response({"error_message": "Refresh token is required."},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error_message": "Refresh token is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-            # ✅ إلغاء الجلسة قبل تدمير التوكن
-            if not request.user.allows_multiple_devices():
-                # الحصول على jti من access token الحالي
-                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-                if auth_header.startswith('Bearer '):
-                    jwt_auth = JWTAuthentication()
-                    validated_token = jwt_auth.get_validated_token(auth_header.split(' ')[1])
-                    jti = validated_token['jti']
-                    
-                    UserSession.objects.filter(
-                        user=request.user,
-                        session_key=jti,
-                        is_active=True
-                    ).update(is_active=False)
-
+            # Blacklist الـ token
             token = RefreshToken(refresh_token)
             token.blacklist()
 
             logger.info(f"User logged out: {request.user.email}")
-            return Response({"detail": "Logout successful."},
-                            status=status.HTTP_205_RESET_CONTENT)
+            return Response(
+                {"detail": "Logout successful."},
+                status=status.HTTP_205_RESET_CONTENT
+            )
 
         except TokenError:
-            return Response({"error_message": "Invalid or expired token."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error_message": "Invalid or expired token."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
