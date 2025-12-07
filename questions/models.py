@@ -75,7 +75,6 @@ class TrueFalseQuestion(QuestionBase):
 
 # -------------------------------------------------------------------
 
-
 class ReadingComprehension(QuestionBase):
     # معلومات القطعة الأساسية
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name="reading_comprehensions")
