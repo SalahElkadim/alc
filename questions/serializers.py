@@ -28,7 +28,7 @@ class MCQChoiceSerializer(serializers.ModelSerializer):
 
 
 class MCQQuestionSerializer(serializers.ModelSerializer):
-    mcq_choices = MCQChoiceSerializer(many=True)
+    mcq_choices = MCQChoiceSerializer(many=True, source = "choices")
 
     class Meta:
         model = MCQQuestion
@@ -44,37 +44,34 @@ class MCQQuestionSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        choices_data = validated_data.pop('mcq_choices')
+        choices_data = validated_data.pop('choices')
         question = MCQQuestion.objects.create(**validated_data)
-
+    
         MCQChoice.objects.bulk_create([
             MCQChoice(question=question, **choice) for choice in choices_data
         ])
-
-        # تعيين الإجابة الصحيحة
+    
+        # حدد الإجابة الصحيحة
         correct_choice = next((c['text'] for c in choices_data if c.get('is_correct')), None)
         if correct_choice:
             question.correct_answer = correct_choice
             question.save()
-
+    
         return question
 
 
     def update(self, instance, validated_data):
-        choices_data = validated_data.pop('mcq_choices', None)
-
+        choices_data = validated_data.pop('choices', None) 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        if choices_data:
+        if choices_data is not None:
             instance.choices.all().delete()
             MCQChoice.objects.bulk_create([
                 MCQChoice(question=instance, **choice) for choice in choices_data
             ])
-
         return instance
-
 
 
 # -----------------------------
