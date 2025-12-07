@@ -15,7 +15,6 @@ from django.utils import timezone
 from decimal import Decimal
 import json
 
-
 class GenerateExamAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -23,9 +22,11 @@ class GenerateExamAPIView(APIView):
     def post(self, request):
         book_id = request.data.get("book")
         difficulty = request.data.get("difficulty")
+        total_required = 20  # عدد الأسئلة المطلوب
 
         if not book_id or not difficulty:
-            return Response({"error_message": "book and difficulty are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error_message": "book and difficulty are required"}, 
+                            status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             try:
@@ -35,117 +36,144 @@ class GenerateExamAPIView(APIView):
                     duration_minutes=30
                 )
 
-                # جلب الأسئلة مع التحقق من وجودها
+                # *********** 1) جلب أسئلة المستوى المطلوب أولاً ***********
                 mcqs = list(MCQQuestion.objects.filter(book_id=book_id, difficulty=difficulty))
                 matches = list(MatchingQuestion.objects.filter(book_id=book_id, difficulty=difficulty))
                 tfs = list(TrueFalseQuestion.objects.filter(book_id=book_id, difficulty=difficulty))
                 readings = list(ReadingComprehension.objects.filter(book_id=book_id, difficulty=difficulty))
 
-                # التحقق من وجود أسئلة كافية
-                required_count = 5
-                if len(mcqs) < required_count or len(matches) < required_count or \
-                   len(tfs) < required_count or len(readings) < required_count:
+                total_first_level = len(mcqs) + len(matches) + len(tfs) + len(readings)
+
+                # *********** 2) لو مش كفاية → نكمل من مستويات أخرى ***********
+                if total_first_level < total_required:
+                    remaining = total_required - total_first_level
+
+                    other_levels = ["easy", "medium", "hard"]
+                    if difficulty in other_levels:
+                        other_levels.remove(difficulty)
+
+                    extra_mcqs = list(MCQQuestion.objects.filter(book_id=book_id, difficulty__in=other_levels))
+                    extra_matches = list(MatchingQuestion.objects.filter(book_id=book_id, difficulty__in=other_levels))
+                    extra_tfs = list(TrueFalseQuestion.objects.filter(book_id=book_id, difficulty__in=other_levels))
+                    extra_readings = list(ReadingComprehension.objects.filter(book_id=book_id, difficulty__in=other_levels))
+
+                    extra_questions = {
+                        "mcq": extra_mcqs,
+                        "matching": extra_matches,
+                        "truefalse": extra_tfs,
+                        "reading": extra_readings
+                    }
+
+                    for key in extra_questions:
+                        random.shuffle(extra_questions[key])
+
+                    for key, qs in extra_questions.items():
+                        if remaining <= 0:
+                            break
+
+                        take = qs[:remaining]
+
+                        if key == "mcq":
+                            mcqs += take
+                        elif key == "matching":
+                            matches += take
+                        elif key == "truefalse":
+                            tfs += take
+                        elif key == "reading":
+                            readings += take
+
+                        remaining -= len(take)
+
+                # *********** 3) لو بعد كل ده لسه مش مكمل → يبقى مفيش أسئلة كفاية أصلاً ***********
+                total_available = len(mcqs) + len(matches) + len(tfs) + len(readings)
+                if total_available < total_required:
                     return Response({
-                        "error_message": "عدد الأسئلة غير كافي لإنشاء الامتحان",
-                        "available": {
-                            "mcqs": len(mcqs),
-                            "matches": len(matches),
-                            "tfs": len(tfs),
-                            "readings": len(readings)
-                        },
-                        "required": required_count
+                        "error_message": "لا يوجد أسئلة كافية في كل المستويات",
+                        "available": total_available,
+                        "required": total_required
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # خلط الأسئلة
+                # *********** 4) خلط وتجميع كل الأسئلة ***********
                 random.shuffle(mcqs)
                 random.shuffle(matches)
                 random.shuffle(tfs)
                 random.shuffle(readings)
 
-                # اختيار الأسئلة
-                selected_mcqs = mcqs[:required_count]
-                selected_matches = matches[:required_count]
-                selected_tfs = tfs[:required_count]
-                selected_readings = readings[:required_count]
+                combined_questions = []
+                combined_questions += [("mcq", q) for q in mcqs]
+                combined_questions += [("matching", q) for q in matches]
+                combined_questions += [("truefalse", q) for q in tfs]
+                combined_questions += [("reading", q) for q in readings]
 
-                # إنشاء أسئلة MCQ
-                for q in selected_mcqs:
-                    ExamQuestion.objects.create(
-                        exam=exam,
-                        question_type="mcq",
-                        question_id=q.id,
-                        question_text=q.text,
-                        correct_answer=q.correct_answer,
-                        points=1
-                    )
+                random.shuffle(combined_questions)
 
-                # إنشاء أسئلة المطابقة
-                for q in selected_matches:
-                    pairs_data = []
-                    for pair in q.pairs.all():
-                        pairs_data.append({
-                            "match_key": pair.match_key,
-                            "left_item": pair.left_item,
-                            "right_item": pair.right_item
-                        })
-                    
-                    # حساب النقاط بناءً على عدد المطابقات
-                    points = len(pairs_data) if pairs_data else 1
-                    
-                    ExamQuestion.objects.create(
-                        exam=exam,
-                        question_type="matching",
-                        question_id=q.id,
-                        question_text=q.text,
-                        correct_answer=pairs_data,
-                        points=points  # نقطة لكل مطابقة
-                    )
+                selected = combined_questions[:total_required]
 
-                # إنشاء أسئلة صح/خطأ
-                for q in selected_tfs:
-                    ExamQuestion.objects.create(
-                        exam=exam,
-                        question_type="truefalse",
-                        question_id=q.id,
-                        question_text=q.text,
-                        correct_answer=q.is_true,
-                        points=1
-                    )
+                # *********** 5) إنشاء أسئلة الامتحان ***********
+                for qtype, q in selected:
 
-                # إنشاء أسئلة القراءة مع حساب النقاط الصحيح
-                for q in selected_readings:
-                    reading_questions = []
-                    
-                    if hasattr(q, 'questions_data') and q.questions_data:
-                        if isinstance(q.questions_data, list):
+                    if qtype == "mcq":
+                        ExamQuestion.objects.create(
+                            exam=exam,
+                            question_type="mcq",
+                            question_id=q.id,
+                            question_text=q.text,
+                            correct_answer=q.correct_answer,
+                            points=1
+                        )
+
+                    elif qtype == "truefalse":
+                        ExamQuestion.objects.create(
+                            exam=exam,
+                            question_type="truefalse",
+                            question_id=q.id,
+                            question_text=q.text,
+                            correct_answer=q.is_true,
+                            points=1
+                        )
+
+                    elif qtype == "matching":
+                        pairs_data = [{
+                            "match_key": p.match_key,
+                            "left_item": p.left_item,
+                            "right_item": p.right_item
+                        } for p in q.pairs.all()]
+
+                        ExamQuestion.objects.create(
+                            exam=exam,
+                            question_type="matching",
+                            question_id=q.id,
+                            question_text=q.text,
+                            correct_answer=pairs_data,
+                            points=max(1, len(pairs_data))
+                        )
+
+                    elif qtype == "reading":
+                        reading_questions = []
+
+                        if hasattr(q, 'questions_data') and isinstance(q.questions_data, list):
                             for item in q.questions_data:
                                 if isinstance(item, dict):
-                                    formatted_question = {
+                                    reading_questions.append({
                                         "question": item.get("question", ""),
                                         "correct_answer": item.get("correct_answer", ""),
                                         "choices": item.get("choices", []) if item.get("type") == "mcq" else []
-                                    }
-                                    reading_questions.append(formatted_question)
-                    
-                    # حساب النقاط بناءً على عدد الأسئلة الفرعية
-                    points = len(reading_questions) if reading_questions else 1
-                    
-                    ExamQuestion.objects.create(
-                        exam=exam,
-                        question_type="reading",
-                        question_id=q.id,
-                        question_text=q.title,
-                        correct_answer=reading_questions,
-                        points=points  # نقطة لكل سؤال فرعي
-                    )
+                                    })
+
+                        ExamQuestion.objects.create(
+                            exam=exam,
+                            question_type="reading",
+                            question_id=q.id,
+                            question_text=q.title,
+                            correct_answer=reading_questions,
+                            points=max(1, len(reading_questions))
+                        )
 
                 return Response(ExamSerializer(exam).data, status=status.HTTP_201_CREATED)
-                
-            except Exception as e:
-                return Response({
-                    "error_message": f"خطأ في إنشاء الامتحان: {str(e)}"
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            except Exception as e:
+                return Response({"error_message": str(e)},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SubmitExamAPIView(APIView):
     authentication_classes = [JWTAuthentication]
