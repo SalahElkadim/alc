@@ -223,7 +223,7 @@ MOYASAR_PUBLISHABLE_KEY = os.getenv("MOYASAR_PUBLISHABLE_KEY")
 MOYASAR_BASE_URL = "https://api.moyasar.com/v1/"
 MOYASAR_API_URL = "https://api.moyasar.com/v1/payments"
 
-DEBUG=False
+DEBUG=True
 #DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 #SECURE_SSL_REDIRECT = not DEBUG
 #SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
