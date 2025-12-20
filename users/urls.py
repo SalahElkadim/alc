@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     RegisterView, LoginView, LogoutView, 
     ChangePasswordView, ProfileView, ForgotPasswordView,ResetPasswordConfirmView,CustomTokenRefreshView,PasswordResetRequestList
-,support,privacy
+,support,privacy,DeleteUserView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -19,5 +19,7 @@ urlpatterns = [
     path("password-reset-requests/<int:pk>/", PasswordResetRequestList.as_view()),
     path('privacy/', privacy, name='privacy'),
     path('support/', support, name='support'),
+    path('delete-account/', DeleteUserView.as_view(), name='delete-account'),
+
 
 ]

@@ -210,38 +210,11 @@ class ResetPasswordConfirmView(APIView):
         return Response({"detail": "تم تغيير كلمة المرور بنجاح."}, status=200)
 
 class CustomTokenRefreshView(TokenRefreshView):
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        
-        if response.status_code == 200 and "access" in response.data:
-            try:
-                access_token = response.data["access"]
-                jwt_auth = JWTAuthentication()
-                validated_token = jwt_auth.get_validated_token(access_token)
-                jti = validated_token["jti"]
-                user = jwt_auth.get_user(validated_token)
-
-                # ✅ للطلاب: التحقق من وجود جلسة نشطة
-                if not user.allows_multiple_devices():
-                    session = UserSession.objects.filter(
-                        user=user, 
-                        is_active=True
-                    ).order_by('-last_activity').first()
-                    
-                    if session:
-                        session.session_key = jti
-                        session.last_activity = timezone.now()
-                        session.save()
-                    else:
-                        # لو مفيش جلسة نشطة، ارفض التحديث
-                        return Response(
-                            {"error_message": "No active session. Please login again."},
-                            status=401
-                        )
-            except Exception as e:
-                logger.error(f"Error in token refresh: {str(e)}")
-                
-        return response
+    """
+    استخدم الـ TokenRefreshView العادي من simplejwt
+    بيعمل refresh للـ access token باستخدام الـ refresh token
+    """
+    pass 
 
 def custom_404(request, exception):
     return render(request, "errors/404.html", status=404)
@@ -271,3 +244,48 @@ class PasswordResetRequestList(APIView):
             return Response({"detail": "تم تحديث الحالة بنجاح"})
         except PasswordResetRequest.DoesNotExist:
             return Response({"error": "الطلب غير موجود"}, status=404)
+
+class DeleteUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {"error_message": "البريد الإلكتروني مطلوب."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # التحقق من أن المستخدم يحذف حسابه الخاص أو أنه أدمن
+        if request.user.email != email and not request.user.is_staff:
+            return Response(
+                {"error_message": "غير مصرح لك بحذف هذا الحساب."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+            
+            # منع حذف حسابات الأدمن إلا من أدمن آخر
+            if user.is_staff and not request.user.is_superuser:
+                return Response(
+                    {"error_message": "لا يمكن حذف حساب المشرف."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            user_email = user.email
+            user.delete()
+            
+            logger.info(f"User account deleted: {user_email} by {request.user.email}")
+            
+            return Response(
+                {"detail": "تم حذف الحساب بنجاح."},
+                status=status.HTTP_200_OK
+            )
+            
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error_message": "المستخدم غير موجود."},
+                status=status.HTTP_404_NOT_FOUND
+            )
