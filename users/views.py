@@ -91,7 +91,7 @@ class LoginView(APIView):
         return request.META.get('REMOTE_ADDR')
 
 class LogoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = []
 
     def post(self, request):
         try:
