@@ -17,9 +17,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import render
 from .models import PasswordResetRequest
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import AllowAny
 
-logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -92,37 +91,32 @@ class LoginView(APIView):
             return x_forwarded_for.split(',')[0]
         return request.META.get('REMOTE_ADDR')
 
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
 
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh")
+            if not refresh_token:
+                return Response(
+                    {"error_message": "Refresh token is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+            # Blacklist الـ token
+            token = RefreshToken(refresh_token)
+            token.blacklist()
 
-@api_view(['POST'])
-@authentication_classes([])  # ⬅️ مهم
-@permission_classes([])      # ⬅️ مهم
-def logout_view(request):
-    try:
-        refresh_token = request.data.get("refresh")
-        if not refresh_token:
             return Response(
-                {"error_message": "Refresh token is required."},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Logout successful."},
+                status=status.HTTP_205_RESET_CONTENT
             )
 
-        token = RefreshToken(refresh_token)
-        token.blacklist()
-
-        user_id = token.payload.get('user_id')
-        logger.info(f"User logged out: user_id={user_id}")
-        
-        return Response(
-            {"detail": "Logout successful."},
-            status=status.HTTP_205_RESET_CONTENT
-        )
-
-    except TokenError:
-        return Response(
-            {"error_message": "Invalid or expired token."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        except TokenError:
+            return Response(
+                {"error_message": "Invalid or expired token."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
