@@ -49,7 +49,7 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔹 تحقق من وجود المستخدم
+        # Check if user exists
         try:
             user = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
@@ -59,14 +59,14 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔹 تحقق من إن الحساب مش مقفول
+        # Check if account is locked
         if user.is_account_locked():
             return Response(
                 {"error_message": "Account is temporarily locked. Try again later."},
                 status=status.HTTP_423_LOCKED
             )
         
-        # ✅ فحص الباسورد
+        # Validate password
         serializer = LoginSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             user.failed_login_attempts += 1
@@ -76,7 +76,7 @@ class LoginView(APIView):
             message = serializer.errors.get('error_message', ["Invalid credentials."])[0]
             return Response({"error_message": message}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ تسجيل الدخول ناجح
+        # Successful login
         user.failed_login_attempts = 0
         user.account_locked_until = None
         user.last_login_ip = ip_address
@@ -103,7 +103,7 @@ class LogoutView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Blacklist الـ token
+            # Blacklist the token
             token = RefreshToken(refresh_token)
             token.blacklist()
 
@@ -162,7 +162,7 @@ class ForgotPasswordView(APIView):
             try:
                 user = CustomUser.objects.get(email=email)
             except CustomUser.DoesNotExist:
-                return Response({"error_message": "هذا البريد غير مسجل."}, status=400)
+                return Response({"error_message": "This email is not registered."}, status=400)
 
             token_generator = PasswordResetTokenGenerator()
             token = token_generator.make_token(user)
@@ -170,49 +170,50 @@ class ForgotPasswordView(APIView):
 
             reset_link = f"https://alcreactapp-production.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
 
-            # 🔹 احفظ الطلب بدل الإرسال
+            # Save the request instead of sending
             PasswordResetRequest.objects.create(
                 email=email,
                 reset_link=reset_link
             )
 
             return Response({
-                "detail": "تم إرسال طلب استعادة كلمة المرور. سيقوم المشرف بالرد عليك قريبًا.",
+                "detail": "Password reset request has been sent. An administrator will respond to you soon.",
             }, status=200)
 
         return Response(serializer.errors, status=400)
 
 class ResetPasswordConfirmView(APIView):
-    permission_classes = []  # إضافة هذا السطر
+    permission_classes = []
     authentication_classes = [] 
-    def post(self, request, uid, token):  # إضافة uid وtoken كـ parameters
+    
+    def post(self, request, uid, token):
         new_password = request.data.get("new_password")
         
         if not new_password:
-            return Response({"error_message": "كلمة المرور مطلوبة."}, status=400)
+            return Response({"error_message": "Password is required."}, status=400)
         
-        # إضافة validation لكلمة المرور
+        # Add password validation
         if len(new_password) < 8:
-            return Response({"error_message": "كلمة المرور يجب أن تكون 8 أحرف على الأقل."}, status=400)
+            return Response({"error_message": "Password must be at least 8 characters long."}, status=400)
         
         try:
             uid_decoded = force_str(urlsafe_base64_decode(uid))
             user = CustomUser.objects.get(pk=uid_decoded)
         except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
-            return Response({"error_message": "رابط غير صالح."}, status=400)
+            return Response({"error_message": "Invalid link."}, status=400)
         
         token_generator = PasswordResetTokenGenerator()
         if not token_generator.check_token(user, token):
-            return Response({"error_message": "الرابط غير صالح أو منتهي الصلاحية."}, status=400)
+            return Response({"error_message": "Invalid or expired link."}, status=400)
         
         user.set_password(new_password)
         user.save()
-        return Response({"detail": "تم تغيير كلمة المرور بنجاح."}, status=200)
+        return Response({"detail": "Password has been changed successfully."}, status=200)
 
 class CustomTokenRefreshView(TokenRefreshView):
     """
-    استخدم الـ TokenRefreshView العادي من simplejwt
-    بيعمل refresh للـ access token باستخدام الـ refresh token
+    Use the standard TokenRefreshView from simplejwt
+    Refreshes the access token using the refresh token
     """
     pass 
 
@@ -221,6 +222,7 @@ def custom_404(request, exception):
 
 def privacy(request):
     return render(request, "privacy.html")
+
 def support(request):
     return render(request, "support.html")
 
@@ -241,9 +243,9 @@ class PasswordResetRequestList(APIView):
             req = PasswordResetRequest.objects.get(pk=pk)
             req.is_handled = request.data.get("is_handled", True)
             req.save()
-            return Response({"detail": "تم تحديث الحالة بنجاح"})
+            return Response({"detail": "Status updated successfully."})
         except PasswordResetRequest.DoesNotExist:
-            return Response({"error": "الطلب غير موجود"}, status=404)
+            return Response({"error": "Request not found."}, status=404)
 
 class DeleteUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -253,24 +255,24 @@ class DeleteUserView(APIView):
         
         if not email:
             return Response(
-                {"error_message": "البريد الإلكتروني مطلوب."},
+                {"error_message": "Email is required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # التحقق من أن المستخدم يحذف حسابه الخاص أو أنه أدمن
+        # Verify that the user is deleting their own account or is an admin
         if request.user.email != email and not request.user.is_staff:
             return Response(
-                {"error_message": "غير مصرح لك بحذف هذا الحساب."},
+                {"error_message": "You are not authorized to delete this account."},
                 status=status.HTTP_403_FORBIDDEN
             )
         
         try:
             user = CustomUser.objects.get(email=email)
             
-            # منع حذف حسابات الأدمن إلا من أدمن آخر
+            # Prevent deleting admin accounts unless by another admin
             if user.is_staff and not request.user.is_superuser:
                 return Response(
-                    {"error_message": "لا يمكن حذف حساب المشرف."},
+                    {"error_message": "Cannot delete administrator account."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
@@ -280,12 +282,12 @@ class DeleteUserView(APIView):
             logger.info(f"User account deleted: {user_email} by {request.user.email}")
             
             return Response(
-                {"detail": "تم حذف الحساب بنجاح."},
+                {"detail": "Account deleted successfully."},
                 status=status.HTTP_200_OK
             )
             
         except CustomUser.DoesNotExist:
             return Response(
-                {"error_message": "المستخدم غير موجود."},
+                {"error_message": "User not found."},
                 status=status.HTTP_404_NOT_FOUND
             )

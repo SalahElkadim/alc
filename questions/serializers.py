@@ -36,11 +36,11 @@ class MCQQuestionSerializer(serializers.ModelSerializer):
 
     def validate_mcq_choices(self, value):
         if len(value) < 2:
-            raise serializers.ValidationError("يجب أن يحتوي السؤال على خيارين على الأقل.")
+            raise serializers.ValidationError("Question must contain at least 2 choices.")
 
         texts = [choice['text'].strip() for choice in value]
         if len(texts) != len(set(texts)):
-            raise serializers.ValidationError("يجب ألا تتكرر نصوص الخيارات.")
+            raise serializers.ValidationError("Choice texts must not be duplicated.")
         return value
 
     def create(self, validated_data):
@@ -51,7 +51,7 @@ class MCQQuestionSerializer(serializers.ModelSerializer):
             MCQChoice(question=question, **choice) for choice in choices_data
         ])
     
-        # حدد الإجابة الصحيحة
+        # Set the correct answer
         correct_choice = next((c['text'] for c in choices_data if c.get('is_correct')), None)
         if correct_choice:
             question.correct_answer = correct_choice
@@ -83,27 +83,27 @@ class MatchingPairSerializer(serializers.ModelSerializer):
         fields = ['id', 'match_key', 'left_item', 'right_item']
         
     def validate_match_key(self, value):
-        """التحقق من صحة مفتاح المطابقة"""
+        """Validate match key"""
         if not value or not value.strip():
-            raise serializers.ValidationError("مفتاح المطابقة مطلوب")
+            raise serializers.ValidationError("Match key is required")
         return value.strip()
     
     def validate_left_item(self, value):
-        """التحقق من العنصر الأيسر"""
+        """Validate left item"""
         if not value or not value.strip():
-            raise serializers.ValidationError("العنصر الأيسر مطلوب")
+            raise serializers.ValidationError("Left item is required")
         return value.strip()
     
     def validate_right_item(self, value):
-        """التحقق من العنصر الأيمن"""
+        """Validate right item"""
         if not value or not value.strip():
-            raise serializers.ValidationError("العنصر الأيمن مطلوب")
+            raise serializers.ValidationError("Right item is required")
         return value.strip()
 
 class MatchingQuestionSerializer(serializers.ModelSerializer):
-    # للقراءة
+    # For reading
     matching_pairs = serializers.SerializerMethodField()
-    # للكتابة
+    # For writing
     input_matching_pairs = MatchingPairSerializer(many=True, source='pairs', write_only=True)
     
     pairs_count = serializers.SerializerMethodField()
@@ -169,29 +169,27 @@ class ReadingComprehensionSerializer(serializers.ModelSerializer):
                 ]
     
     def validate_questions_data(self, value):
-        """التحقق من صحة بيانات الأسئلة"""
+        """Validate questions data"""
         if not isinstance(value, list):
-            raise serializers.ValidationError("الأسئلة يجب أن تكون في شكل قائمة")
+            raise serializers.ValidationError("Questions must be in list format")
         
         for i, question in enumerate(value):
             if not isinstance(question, dict):
-                raise serializers.ValidationError(f"السؤال رقم {i+1} يجب أن يكون object")
+                raise serializers.ValidationError(f"Question {i+1} must be an object")
             
             required_fields = ['question', 'choices', 'correct_answer']
             for field in required_fields:
                 if field not in question:
-                    raise serializers.ValidationError(f"السؤال رقم {i+1} يفتقد للحقل: {field}")
+                    raise serializers.ValidationError(f"Question {i+1} is missing field: {field}")
             
-            # التحقق من الاختيارات
+            # Validate choices
             choices = question.get('choices')
             if not isinstance(choices, list) or len(choices) < 2:
-                raise serializers.ValidationError(f"السؤال رقم {i+1}: الاختيارات يجب أن تكون قائمة تحتوي على خيارين على الأقل")
+                raise serializers.ValidationError(f"Question {i+1}: Choices must be a list containing at least 2 options")
             
-            # التحقق من الإجابة الصحيحة
+            # Validate correct answer
             correct_answer = question.get('correct_answer')
             if correct_answer not in choices:
-                raise serializers.ValidationError(f"السؤال رقم {i+1}: الإجابة الصحيحة يجب أن تكون من ضمن الاختيارات")
+                raise serializers.ValidationError(f"Question {i+1}: Correct answer must be one of the choices")
         
         return value
-
-

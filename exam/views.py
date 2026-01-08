@@ -22,7 +22,7 @@ class GenerateExamAPIView(APIView):
     def post(self, request):
         book_id = request.data.get("book")
         difficulty = request.data.get("difficulty")
-        total_required = 20  # عدد الأسئلة المطلوب
+        total_required = 20
 
         if not book_id or not difficulty:
             return Response({"error_message": "book and difficulty are required"}, 
@@ -36,7 +36,7 @@ class GenerateExamAPIView(APIView):
                     duration_minutes=30
                 )
 
-                # *********** 1) جلب أسئلة المستوى المطلوب أولاً ***********
+                # *********** 1) Fetch questions from the requested difficulty level first ***********
                 mcqs = list(MCQQuestion.objects.filter(book_id=book_id, difficulty=difficulty))
                 matches = list(MatchingQuestion.objects.filter(book_id=book_id, difficulty=difficulty))
                 tfs = list(TrueFalseQuestion.objects.filter(book_id=book_id, difficulty=difficulty))
@@ -44,7 +44,7 @@ class GenerateExamAPIView(APIView):
 
                 total_first_level = len(mcqs) + len(matches) + len(tfs) + len(readings)
 
-                # *********** 2) لو مش كفاية → نكمل من مستويات أخرى ***********
+                # *********** 2) If not enough questions → get from other difficulty levels ***********
                 if total_first_level < total_required:
                     remaining = total_required - total_first_level
 
@@ -84,16 +84,16 @@ class GenerateExamAPIView(APIView):
 
                         remaining -= len(take)
 
-                # *********** 3) لو بعد كل ده لسه مش مكمل → يبقى مفيش أسئلة كفاية أصلاً ***********
+                # *********** 3) If still not enough questions → insufficient questions available ***********
                 total_available = len(mcqs) + len(matches) + len(tfs) + len(readings)
                 if total_available < total_required:
                     return Response({
-                        "error_message": "لا يوجد أسئلة كافية في كل المستويات",
+                        "error_message": "Not enough questions available across all difficulty levels",
                         "available": total_available,
                         "required": total_required
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # *********** 4) خلط وتجميع كل الأسئلة ***********
+                # *********** 4) Shuffle and combine all questions ***********
                 random.shuffle(mcqs)
                 random.shuffle(matches)
                 random.shuffle(tfs)
@@ -109,7 +109,7 @@ class GenerateExamAPIView(APIView):
 
                 selected = combined_questions[:total_required]
 
-                # *********** 5) إنشاء أسئلة الامتحان ***********
+                # *********** 5) Create exam questions ***********
                 for qtype, q in selected:
 
                     if qtype == "mcq":
@@ -184,59 +184,59 @@ class SubmitExamAPIView(APIView):
             exam_id = request.data.get("exam_id")
             answers = request.data.get("answers", [])
 
-            # التحقق من وجود البيانات المطلوبة
+            # Validate required data
             if not exam_id:
                 return Response({
                     "success": False,
-                    "error_message": "exam_id مطلوب"
+                    "error_message": "exam_id is required"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             if not isinstance(answers, list):
                 return Response({
                     "success": False,
-                    "error_message": "answers يجب أن تكون قائمة"
+                    "error_message": "answers must be a list"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
 
-            # جلب الامتحان والتحقق من صحته
+            # Fetch and validate exam
             try:
                 exam = Exam.objects.get(id=exam_id, student=request.user)
             except Exam.DoesNotExist:
                 return Response({
                     "success": False,
-                    "error_message": "الامتحان غير موجود أو غير مخصص لك"
+                    "error_message": "Exam not found or not assigned to you"
                 }, status=status.HTTP_404_NOT_FOUND)
 
-            # التحقق من أن الامتحان لم ينته بعد
+            # Check if exam is already finished
             if exam.is_finished:
                 return Response({
                     "success": False,
-                    "error_message": "تم تقديم هذا الامتحان مسبقاً"
+                    "error_message": "This exam has already been submitted"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # جلب جميع أسئلة الامتحان
+            # Fetch all exam questions
             exam_questions = exam.exam_questions.all()
             
             if not exam_questions.exists():
                 return Response({
                     "success": False,
-                    "error_message": "لا توجد أسئلة في هذا الامتحان"
+                    "error_message": "No questions found in this exam"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # معالجة الإجابات وحساب الدرجات
+            # Process answers and calculate scores
             total_score = Decimal('0')
             total_possible = Decimal('0')
             detailed_results = []
 
             with transaction.atomic():
-                # تحويل الإجابات إلى قاموس للوصول السريع
+                # Convert answers to dictionary for quick access
                 answers_dict = {}
                 for answer_item in answers:
                     public_q_id = answer_item.get('question_id')
                     if public_q_id:
                         answers_dict[public_q_id] = answer_item
 
-                # معالجة كل سؤال
+                # Process each question
                 for exam_question in exam_questions:
                     student_answer_data = answers_dict.get(str(exam_question.public_id))
                     question_result = {
@@ -250,10 +250,10 @@ class SubmitExamAPIView(APIView):
                         student_answer = student_answer_data.get('answer')
                         question_type = exam_question.question_type
 
-                        # حفظ إجابة الطالب
+                        # Save student answer
                         exam_question.student_answer = student_answer
 
-                        # تصحيح السؤال حسب نوعه
+                        # Grade question based on type
                         if question_type == 'mcq':
                             score = self._grade_mcq(exam_question, student_answer)
                             total_score += score
@@ -312,7 +312,7 @@ class SubmitExamAPIView(APIView):
                         exam_question.save()
                         
                     else:
-                        # لم يجب على السؤال
+                        # Question not answered
                         possible_points = exam_question.points
                         total_possible += possible_points
                         exam_question.is_correct = False
@@ -324,18 +324,18 @@ class SubmitExamAPIView(APIView):
                             "is_correct": False,
                             "points_earned": 0,
                             "points_possible": float(possible_points),
-                            "error_message": "لم يتم الإجابة على هذا السؤال"
+                            "error_message": "This question was not answered"
                         })
                     
                     detailed_results.append(question_result)
 
-                # حساب النسبة المئوية
+                # Calculate percentage
                 percentage = float((total_score / total_possible * 100) if total_possible > 0 else 0)
 
-                # تحديد التقدير
+                # Determine letter grade
                 grade = self._get_letter_grade(percentage)
 
-                # تحديث بيانات الامتحان
+                # Update exam data
                 exam.score = total_score
                 exam.is_finished = True
                 exam.end_time = timezone.now()
@@ -364,23 +364,23 @@ class SubmitExamAPIView(APIView):
                         "matching_questions": len([q for q in detailed_results if q["question_type"] == "matching"]),
                         "reading_questions": len([q for q in detailed_results if q["question_type"] == "reading"])
                     },
-                    "message": "تم تقديم الامتحان بنجاح"
+                    "message": "Exam submitted successfully"
                 }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
                 "success": False,
-                "error_message": f"خطأ في معالجة الامتحان: {str(e)}"
+                "error_message": f"Error processing exam: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _grade_mcq(self, exam_question, student_answer):
-        """تصحيح سؤال الاختيار المتعدد"""
+        """Grade multiple choice question"""
         if not student_answer:
             exam_question.is_correct = False
             return Decimal('0')
 
         correct_answer = exam_question.correct_answer
-        # تطهير الإجابات للمقارنة الصحيحة
+        # Clean answers for proper comparison
         student_clean = str(student_answer).strip().lower()
         correct_clean = str(correct_answer).strip().lower()
         
@@ -389,19 +389,19 @@ class SubmitExamAPIView(APIView):
         return exam_question.points if is_correct else Decimal('0')
 
     def _grade_truefalse(self, exam_question, student_answer):
-        """تصحيح سؤال صح/خطأ"""
+        """Grade true/false question"""
         if student_answer is None:
             exam_question.is_correct = False
             return Decimal('0')
 
         correct_answer = exam_question.correct_answer
         
-        # معالجة الإجابات المختلفة (true/false, 1/0, "true"/"false")
+        # Handle different answer formats (true/false, 1/0, "true"/"false")
         if isinstance(student_answer, str):
             student_answer = student_answer.lower().strip()
-            if student_answer in ['true', '1', 'yes', 'صح']:
+            if student_answer in ['true', '1', 'yes']:
                 student_answer = True
-            elif student_answer in ['false', '0', 'no', 'خطأ']:
+            elif student_answer in ['false', '0', 'no']:
                 student_answer = False
         
         is_correct = bool(student_answer) == bool(correct_answer)
@@ -409,7 +409,7 @@ class SubmitExamAPIView(APIView):
         return exam_question.points if is_correct else Decimal('0')
 
     def _grade_matching(self, exam_question, student_answer):
-        """تصحيح سؤال المطابقة مع نقاط جزئية"""
+        """Grade matching question with partial credit"""
         if not student_answer or not isinstance(student_answer, list):
             exam_question.is_correct = False
             return Decimal('0'), exam_question.points
@@ -419,7 +419,7 @@ class SubmitExamAPIView(APIView):
             exam_question.is_correct = False
             return Decimal('0'), exam_question.points
 
-        # تحويل الإجابات الصحيحة إلى قاموس
+        # Convert correct answers to dictionary
         correct_dict = {}
         for pair in correct_pairs:
             if isinstance(pair, dict) and 'left_item' in pair and 'right_item' in pair:
@@ -427,7 +427,7 @@ class SubmitExamAPIView(APIView):
                 right = str(pair['right_item']).strip().lower()
                 correct_dict[left] = right
 
-        # تحويل إجابات الطالب إلى قاموس
+        # Convert student answers to dictionary
         student_dict = {}
         for pair in student_answer:
             if isinstance(pair, dict) and 'left_item' in pair and 'right_item' in pair:
@@ -435,7 +435,7 @@ class SubmitExamAPIView(APIView):
                 right = str(pair['right_item']).strip().lower()
                 student_dict[left] = right
 
-        # حساب النقاط الجزئية
+        # Calculate partial credit
         correct_matches = 0
         total_pairs = len(correct_dict)
         
@@ -443,7 +443,7 @@ class SubmitExamAPIView(APIView):
             if left_item in student_dict and student_dict[left_item] == correct_right:
                 correct_matches += 1
 
-        # حساب النقاط بناءً على النسبة الصحيحة
+        # Calculate points based on correct percentage
         if total_pairs == 0:
             exam_question.is_correct = False
             return Decimal('0'), Decimal('1')
@@ -451,13 +451,13 @@ class SubmitExamAPIView(APIView):
         score = Decimal(str(correct_matches))
         total_possible = Decimal(str(total_pairs))
         
-        # يعتبر السؤال صحيح إذا كانت كل المطابقات صحيحة
+        # Question is correct only if all matches are correct
         exam_question.is_correct = (correct_matches == total_pairs)
         
         return score, total_possible
 
     def _grade_reading(self, exam_question, student_answer):
-        """تصحيح أسئلة القراءة مع نقاط جزئية"""
+        """Grade reading comprehension questions with partial credit"""
         reading_questions = exam_question.correct_answer
         
         if not isinstance(reading_questions, list) or not reading_questions:
@@ -466,17 +466,17 @@ class SubmitExamAPIView(APIView):
 
         total_sub_questions = len(reading_questions)
         
-        # التحقق من وجود إجابة الطالب
+        # Check if student answer exists
         if not student_answer:
             exam_question.is_correct = False
             return Decimal('0'), Decimal(str(total_sub_questions))
 
-        # حساب النقاط
+        # Calculate points
         correct_count = 0
         
-        # إذا كانت إجابة الطالب عبارة عن نص واحد (الحالة الحالية)
+        # If student answer is a single string (current case)
         if isinstance(student_answer, str):
-            # نفترض أن هناك سؤال واحد فقط في أسئلة القراءة
+            # Assume there's only one question in reading comprehension
             if len(reading_questions) == 1:
                 q_data = reading_questions[0]
                 if isinstance(q_data, dict) and 'correct_answer' in q_data:
@@ -486,22 +486,22 @@ class SubmitExamAPIView(APIView):
                     if correct_answer == student_ans:
                         correct_count = 1
             
-            # حفظ النتيجة
+            # Save result
             exam_question.is_correct = (correct_count == total_sub_questions)
             return Decimal(str(correct_count)), Decimal(str(total_sub_questions))
         
-        # إذا كانت إجابة الطالب عبارة عن list (للمستقبل)
+        # If student answer is a list (for future)
         elif isinstance(student_answer, list):
-            # تحويل أسئلة القراءة إلى قاموس للوصول السريع
+            # Convert reading questions to dictionary for quick access
             correct_answers = {}
             for i, q_data in enumerate(reading_questions):
                 if isinstance(q_data, dict) and 'question' in q_data and 'correct_answer' in q_data:
                     question_text = str(q_data['question']).strip().lower()
                     correct_answer = str(q_data['correct_answer']).strip().lower()
-                    # استخدم الفهرس كمفتاح احتياطي إذا كانت الأسئلة متشابهة
+                    # Use index as fallback key if questions are similar
                     key = f"{question_text}_{i}"
                     correct_answers[key] = correct_answer
-                    # أضف المفتاح بدون فهرس أيضاً
+                    # Add key without index as well
                     if question_text not in correct_answers:
                         correct_answers[question_text] = correct_answer
             
@@ -510,7 +510,7 @@ class SubmitExamAPIView(APIView):
                     question_text = str(student_q['question']).strip().lower()
                     student_ans = str(student_q['answer']).strip().lower()
 
-                    # جرب البحث بالفهرس أولاً، ثم بدونه
+                    # Try searching with index first, then without
                     key_with_index = f"{question_text}_{i}"
                     
                     if key_with_index in correct_answers:
@@ -520,17 +520,17 @@ class SubmitExamAPIView(APIView):
                         if correct_answers[question_text] == student_ans:
                             correct_count += 1
 
-            # حفظ النتيجة
+            # Save result
             exam_question.is_correct = (correct_count == total_sub_questions)
             return Decimal(str(correct_count)), Decimal(str(total_sub_questions))
         
-        # حالة أخرى غير متوقعة
+        # Other unexpected case
         else:
             exam_question.is_correct = False
             return Decimal('0'), Decimal(str(total_sub_questions))
 
     def _get_letter_grade(self, percentage):
-        """تحديد التقدير بناء على النسبة المئوية"""
+        """Determine letter grade based on percentage"""
         if percentage >= 90:
             return "A"
         elif percentage >= 80:

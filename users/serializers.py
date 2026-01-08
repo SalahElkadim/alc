@@ -24,7 +24,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         email = attrs.get('email')
         if CustomUser.objects.filter(email=email).exists():
             error = serializers.ValidationError({})
-            error.detail = {"error_message": "البريد الإلكتروني مسجل بالفعل"}
+            error.detail = {"error_message": "this email is exist!"}
             raise error
         return attrs
 
