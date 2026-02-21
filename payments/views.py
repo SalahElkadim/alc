@@ -34,9 +34,9 @@ class CheckValueView(APIView):
     def post(self, request):
         value = request.data.get("value")
         if value == "hello":
-            return Response({"result": False})
-        else:
             return Response({"result": True})
+        else:
+            return Response({"result": False})
 
 
 def payment_page(request):
