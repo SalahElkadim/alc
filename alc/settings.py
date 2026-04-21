@@ -187,18 +187,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 #FRONTEND_URL = 'http://localhost:3000'  # أو الـ URL بتاع الـ frontend
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-#EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = "alcapp21@gmail.com"
-EMAIL_HOST_USER = "alcapp21@gmail.com"
-EMAIL_HOST_PASSWORD = "vood eypr smtp uhez"
-
-
-
 SESSION_EXPIRE_SECONDS = 24 * 60 * 60  # 24 ساعة
 from django.core.management import BaseCommand
 
