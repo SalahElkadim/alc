@@ -128,7 +128,9 @@ WSGI_APPLICATION = 'alc.wsgi.application'
 CORS_ALLOW_CREDENTIALS = True
 
 
-
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
+BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL')
+BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME')
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

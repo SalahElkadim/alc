@@ -150,6 +150,9 @@ class ProfileView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+import requests
+from django.conf import settings
+
 class ForgotPasswordView(APIView):
     permission_classes = []
     authentication_classes = []
@@ -164,20 +167,41 @@ class ForgotPasswordView(APIView):
             except CustomUser.DoesNotExist:
                 return Response({"error_message": "This email is not registered."}, status=400)
 
+            # Generate token and link
             token_generator = PasswordResetTokenGenerator()
             token = token_generator.make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-
             reset_link = f"https://alcreactapp-production.up.railway.app/users/reset-password-confirm/{uidb64}/{token}/"
 
-            # Save the request instead of sending
-            PasswordResetRequest.objects.create(
-                email=email,
-                reset_link=reset_link
+            # Send email via Brevo
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": settings.BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "sender": {
+                        "name": settings.BREVO_SENDER_NAME,
+                        "email": settings.BREVO_SENDER_EMAIL
+                    },
+                    "to": [{"email": email}],
+                    "subject": "Password Reset Request",
+                    "htmlContent": f"""
+                        <h2>Password Reset</h2>
+                        <p>Click the link below to reset your password:</p>
+                        <a href="{reset_link}">Reset Password</a>
+                        <p>This link will expire soon. If you didn't request this, ignore this email.</p>
+                    """
+                }
             )
 
+            if response.status_code != 201:
+                logger.error(f"Brevo error: {response.text}")
+                return Response({"error_message": "Failed to send email. Try again later."}, status=500)
+
             return Response({
-                "detail": "Password reset request has been sent. An administrator will respond to you soon.",
+                "detail": "Password reset link has been sent to your email.",
             }, status=200)
 
         return Response(serializer.errors, status=400)
